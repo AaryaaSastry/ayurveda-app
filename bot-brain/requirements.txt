@@ -1,0 +1,14 @@
+PyPDF2>=3.0.0
+pdfplumber
+spacy
+sentence-transformers
+faiss-cpu
+
+# Optional for advanced relation extraction / LLM
+# transformers
+# openai (if you use remote APIs)
+
+# Backend API dependencies
+fastapi>=0.95.2
+uvicorn[standard]>=0.22.0
+google-genai
