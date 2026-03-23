@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
 import './report.css'
 import ReportRenderer from './ReportRenderer'
+import RecipesView from './pages/RecipesView'
 
 // API Configuration
 // For local testing: use 'http://localhost:8000'
 // For mobile testing on same network: use your computer's IP (e.g., 'http://192.168.1.100:8000')
 // You can change this URL to match your setup
-const API_BASE = 'http://192.168.0.13:8000';
+const API_BASE = 'http://localhost:8000';
 
 // SVG Icons as components
 const SendIcon = () => (
@@ -38,6 +39,9 @@ export default function Chat() {
   const [isFinal, setIsFinal] = useState(false)
   const [recipesText, setRecipesText] = useState('')
   const [rawJsonHtml, setRawJsonHtml] = useState('')
+  const [showQueryButtons, setShowQueryButtons] = useState(false)
+  const [showActionButtons, setShowActionButtons] = useState(false)
+  const [showRecipesPage, setShowRecipesPage] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [connectionError, setConnectionError] = useState(null)
   const messagesEndRef = useRef(null)
@@ -50,14 +54,22 @@ export default function Chat() {
         const res = await fetch(API_BASE + '/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ facts: [] })
+          body: JSON.stringify({ message: "START_CONVERSATION" }) // Send a trigger
         })
         if (!res.ok) throw new Error(`Server error: ${res.status}`)
         const data = await res.json()
-        setMessages([{ role: 'bot', text: data.question }])
+        const botText = data.content || data.question || 'Namaste! I am your Ayurvedic AI assistant.';
+        
+        // Handle split messages for the initial greeting
+        if (botText.includes('---NEXT_BUBBLE---')) {
+          const bubbles = botText.split('---NEXT_BUBBLE---').filter(b => b.trim());
+          const newMessages = bubbles.map(text => ({ role: 'bot', text: text.trim() }));
+          setMessages(newMessages);
+        } else {
+          setMessages([{ role: 'bot', text: botText }])
+        }
       } catch (err) {
         setConnectionError(err.message)
-        setMessages([{ role: 'bot', text: 'Namaste — start by typing your main health concern and press Send.' }])
       }
     }
     fetchOpening()
@@ -84,11 +96,11 @@ export default function Chat() {
     }
   }, [input])
 
-  async function postAsk(factsArray) {
+  async function postAsk(dataPayload) {
     const res = await fetch(API_BASE + '/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ facts: factsArray })
+      body: JSON.stringify(dataPayload)
     })
     if (!res.ok) {
       throw new Error(`Server error: ${res.status}`);
@@ -194,58 +206,49 @@ export default function Chat() {
     setInput('')
     inputRef.current?.focus()
 
-    const isAnswer = lastBotText && /\?$/.test(lastBotText.trim())
-
     setIsLoading(true)
     setConnectionError(null);
 
-    if (isAnswer) {
-      const qa = `Q: ${lastBotText} A: ${userText}`
-      const newFacts = [...facts, qa]
-      setFacts(newFacts)
-      setMessages(m => [...m, { role: 'user', text: userText }])
+    // Add user message to UI
+    setMessages(m => [...m, { role: 'user', text: userText }])
+    // Show thinking state
+    setMessages(m => [...m, { role: 'bot', text: '', isThinking: true }])
 
-      setMessages(m => [...m, { role: 'bot', text: '', isThinking: true }])
-      try {
-        const resp = await postAsk(newFacts)
-        if (resp && resp.question === 'I HAVE ENOUGH INFORMATION' && resp.final_diagnosis) {
-          setIsFinal(true)
-          setDiagnosis(resp.final_diagnosis)
-          setValidatedReview(resp.validated_review || '')
-          setOfferRecipesFlag(Boolean(resp.offer_recipes))
-          setRawJsonHtml(syntaxHighlight(resp))
-          setMessages(m => m.slice(0, -1).concat({ role: 'report', text: resp.final_diagnosis }))
+    try {
+      // Logic is handled by the backend. We just send the message.
+      // The backend maintains the session/history based on user_id.
+      const resp = await postAsk({ message: userText })
+      
+      if (resp.type === 'diagnosis') {
+        setIsFinal(true)
+        setDiagnosis(resp.content)
+        // Ensure we handle the "content" field correctly for the report
+        setMessages(m => m.slice(0, -1).concat({ role: 'report', text: resp.content }))
+        
+        // After diagnosis, ask if they have queries
+        setTimeout(() => {
+          setMessages(m => [...m, { role: 'bot', text: 'Do you have any queries about the document?' }])
+          setShowQueryButtons(true)
+        }, 1000)
+      } else {
+        const botText = resp.content || resp.question || 'Error: invalid response from server.'
+        
+        // Handle split messages if '---NEXT_BUBBLE---' is present
+        if (botText.includes('---NEXT_BUBBLE---')) {
+          const bubbles = botText.split('---NEXT_BUBBLE---').filter(b => b.trim());
+          const newMessages = bubbles.map(text => ({ role: 'bot', text: text.trim() }));
+          
+          setMessages(m => {
+            const history = m.slice(0, -1); // Remove the thinking bubble
+            return [...history, ...newMessages];
+          });
         } else {
-          const question = resp.question || 'Error: invalid response from server.'
-          setMessages(m => m.slice(0, -1).concat({ role: 'bot', text: question }))
+          setMessages(m => m.slice(0, -1).concat({ role: 'bot', text: botText }))
         }
-      } catch (e) {
-        setConnectionError(`Could not connect to API at ${API_BASE}. Make sure the backend is running.`);
-        setMessages(m => m.slice(0, -1).concat({ role: 'bot', text: 'Error: Could not connect to server. Please check if the backend is running.' }))
       }
-    } else {
-      const patient = `Patient: ${userText}`
-      const newFacts = [...facts, patient]
-      setFacts(newFacts)
-      setMessages(m => [...m, { role: 'user', text: userText }])
-
-      setMessages(m => [...m, { role: 'bot', text: '', isThinking: true }])
-      try {
-        const resp = await postAsk(newFacts)
-        if (resp && resp.question === 'I HAVE ENOUGH INFORMATION' && resp.final_diagnosis) {
-          setIsFinal(true)
-          setDiagnosis(resp.final_diagnosis)
-          setValidatedReview(resp.validated_review || '')
-          setOfferRecipesFlag(Boolean(resp.offer_recipes))
-          setMessages(m => m.slice(0, -1).concat({ role: 'report', text: resp.final_diagnosis }))
-        } else {
-          const question = resp.question || 'Error: invalid response from server.'
-          setMessages(m => m.slice(0, -1).concat({ role: 'bot', text: question }))
-        }
-      } catch (e) {
-        setConnectionError(`Could not connect to API at ${API_BASE}. Make sure the backend is running.`);
-        setMessages(m => m.slice(0, -1).concat({ role: 'bot', text: 'Error: Could not connect to server. Please check if the backend is running.' }))
-      }
+    } catch (e) {
+      setConnectionError(`Could not connect to API at ${API_BASE}. Make sure the backend is running.`);
+      setMessages(m => m.slice(0, -1).concat({ role: 'bot', text: 'Error: Could not connect to server. Please check if the backend is running.' }))
     }
 
     setIsLoading(false)
@@ -271,8 +274,7 @@ export default function Chat() {
     try {
       const r = await postRecipes(facts, diagnosis)
       setRecipesText(r)
-      // Insert recipes as a report so it is rendered with ReportRenderer
-      setMessages(m => m.slice(0, -1).concat({ role: 'report', text: r }))
+      setShowRecipesPage(true)
     } catch (e) {
       setMessages(m => m.slice(0, -1).concat({ role: 'bot', text: 'Error: failed to get recipes.' }))
     }
@@ -303,6 +305,16 @@ export default function Chat() {
     }
   }
 
+  function handleQueryChoice(choice) {
+    setShowQueryButtons(false)
+    if (choice === 'yes') {
+      setMessages(m => [...m, { role: 'user', text: 'Yes' }, { role: 'bot', text: 'Please go ahead with your questions about the report.' }])
+    } else {
+      setMessages(m => [...m, { role: 'user', text: 'No' }, { role: 'bot', text: 'You can now generate personalized recipes or find a doctor near you.' }])
+      setShowActionButtons(true)
+    }
+  }
+
   const getPlaceholder = () => {
     if (lastBotText && /\?$/.test(lastBotText.trim())) {
       return 'Type your answer...'
@@ -312,6 +324,9 @@ export default function Chat() {
 
   return (
     <div className="chat-container">
+      {showRecipesPage && recipesText && (
+        <RecipesView recipes={recipesText} onBack={() => setShowRecipesPage(false)} />
+      )}
       {connectionError && (
         <div className="connection-error">
           {connectionError}
@@ -334,10 +349,26 @@ export default function Chat() {
             ) : (
               // If this message is a report, render the ReportRenderer in place
               m.role === 'report' ? (
-                <div className="msg-body"><ReportRenderer diagnosis={m.text} onGenerateRecipes={handleRecipes} onFindDoctors={handleFindDoctors} /></div>
+                <div className="msg-body">
+                  <ReportRenderer 
+                    content={m.text} 
+                  />
+                </div>
               ) : (
                 <div className="msg-body">{m.text}</div>
               )
+            )}
+            {i === messages.length - 1 && showQueryButtons && (
+              <div className="button-options">
+                <button className="option-btn" onClick={() => handleQueryChoice('yes')}>Yes</button>
+                <button className="option-btn" onClick={() => handleQueryChoice('no')}>No</button>
+              </div>
+            )}
+            {i === messages.length - 1 && showActionButtons && (
+              <div className="button-options main-actions">
+                <button className="action-btn-large" onClick={handleRecipes}>🍳 Get Recipes</button>
+                <button className="action-btn-large" onClick={handleFindDoctors}>🏥 Find Doctors</button>
+              </div>
             )}
           </div>
         ))}

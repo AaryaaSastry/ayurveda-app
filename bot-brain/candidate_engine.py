@@ -25,6 +25,9 @@ KB_DEFAULT = os.path.join(os.path.dirname(__file__), 'test_out', 'sample_canonic
 
 def load_kb(path: Optional[str] = None) -> Dict[str, Any]:
     path = path or KB_DEFAULT
+    if not os.path.exists(path):
+        # Return empty KB if file doesn't exist to prevent crash
+        return {}
     with open(path, 'r', encoding='utf-8') as f:
         return json.load(f)
 

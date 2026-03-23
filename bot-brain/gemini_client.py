@@ -30,11 +30,19 @@ def send(prompt: str, max_tokens: int = 256, model: Optional[str] = None) -> str
     # ==========================
     try:
         from google import genai
-        gem_key = os.environ.get("GEMINI_API_KEY")
+        from dotenv import load_dotenv
+        
+        # Ensure .env is loaded from the correct directory
+        env_path = os.path.join(os.path.dirname(__file__), '.env')
+        load_dotenv(dotenv_path=env_path)
+        
+        gem_key = os.getenv("GEMINI_API_KEY")
 
         if gem_key:
             client = genai.Client(api_key=gem_key)
-            model_name = model or "gemini-1.5-flash"
+            
+            # Use gemini-2.0-flash by default as requested/standard
+            model_name = model or "gemma-3-27b-it"
 
             response = client.models.generate_content(
                 model=model_name,

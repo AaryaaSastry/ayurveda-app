@@ -52,3 +52,8 @@ bot-brain/test_out/
 
 # Logs
 *.log
+
+# Large data files
+bot-brain/RAW_DATA/
+bot-brain/vector_store/
+frontend_chat/package-lock.json
