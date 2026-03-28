@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf'
+import { sanitizeMarkdownText } from './textUtils'
 
 export function downloadMedicalReportPDF(report) {
   if (!report) return
@@ -135,7 +136,7 @@ export function downloadMedicalReportPDF(report) {
     drawCell(105, y, 30, 10, currentDate, false, 'left');
     if (!isEmpty(report.patientInfo?.age)) {
       drawCell(135, y, 25, 10, 'Age', true);
-      drawCell(160, y, 30, 10, report.patientInfo.age, false, 'left');
+      drawCell(160, y, 30, 10, sanitizeMarkdownText(String(report.patientInfo.age)), false, 'left');
     }
     y += 15;
 
@@ -165,8 +166,8 @@ export function downloadMedicalReportPDF(report) {
     doc.text('Medical / Clinical / Symptom History', 105, y + 5.5, { align: 'center' });
     y += 8;
 
-    const symptomsStr = report.symptomsReported?.length ? report.symptomsReported.join('; ') : '';
-    const prakritiStr = report.patientInfo?.constitution || '';
+    const symptomsStr = report.symptomsReported?.length ? report.symptomsReported.map(s => sanitizeMarkdownText(s)).join('; ') : '';
+    const prakritiStr = report.patientInfo?.constitution ? sanitizeMarkdownText(report.patientInfo.constitution) : '';
 
     doc.setFont('times', 'normal');
     doc.setFontSize(10);
@@ -212,7 +213,14 @@ export function downloadMedicalReportPDF(report) {
 
     const drawDataRowDynamic = (label, value) => {
       if (isEmpty(value)) return;
-      const valString = Array.isArray(value) ? value.join('; ') : String(value);
+      
+      let valString = '';
+      if (Array.isArray(value)) {
+        valString = value.map(v => sanitizeMarkdownText(v)).join('; ');
+      } else {
+        valString = sanitizeMarkdownText(String(value));
+      }
+      
       let h = calculateHeight(valString, 110);
 
       if (y + h > pageHeight - 20) {

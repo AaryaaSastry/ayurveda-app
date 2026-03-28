@@ -1,22 +1,18 @@
 :root {
-  --ayur-forest: #3f564d;
-  /* Darker shade - hover states */
+  --ayur-forest: #2d4038;
   --ayur-sage: #4e6c61;
-  /* Core accent - the download button colour */
-  --ayur-sage-light: #ccddd7;
-  /* Light tint for backgrounds */
-  --sidebar-bg: #f4f7f5;
-  /* Very light teal-white */
+  --ayur-sage-light: #e8f0ed;
+  --sidebar-bg: #f8faf9;
   --main-bg: #ffffff;
-  --border-color: #e0e9e5;
-  /* Soft teal border */
-  --text-main: #1f2a26;
-  --text-secondary: #6a7873;
-  --input-border: #c5d5ce;
+  --border-color: #e2e8e5;
+  --text-main: #1a231f;
+  --text-secondary: #5a6a64;
+  --input-border: #cbdad4;
   --accent-color: #4e6c61;
-  /* Single unified colour */
   --user-bubble-bg: #4e6c61;
-  --bot-bubble-bg: #FFFFFF;
+  --bot-bubble-bg: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(226, 232, 229, 0.5);
 }
 
 * {
@@ -90,15 +86,16 @@ body {
 
 /* Sidebar Styling */
 .session-sidebar {
-  /* width: 260px; */
+  width: var(--sidebar-width, 280px);
   height: 100%;
   background-color: var(--sidebar-bg);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease, width 0.3s ease;
+  transition: transform 0.3s ease;
   flex-shrink: 0;
   z-index: 100;
+  position: relative;
 }
 
 .session-sidebar.hidden {
@@ -116,19 +113,25 @@ body {
 
 .new-session-button-chatgpt {
   flex: 1;
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 12px 16px;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
   background: white;
   color: var(--text-main);
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   text-align: left;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .new-session-button-chatgpt:hover {
-  background: #f0f0f0;
+  background: var(--ayur-sage-light);
+  border-color: var(--ayur-sage);
+  transform: translateY(-1px);
 }
 
 .session-list {
@@ -138,20 +141,23 @@ body {
 }
 
 .session-card {
-  padding: 10px;
-  border-radius: 8px;
-  margin-bottom: 2px;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 4px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
   font-size: 0.9rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  background: transparent;
+  border: 1px solid transparent;
 }
 
-.session-card:hover,
+.session-card:hover {
+  background: #f0f2f1;
+}
+
 .session-card.active {
-  background: #ececec;
+  background: var(--ayur-sage-light);
+  border-color: var(--glass-border);
 }
 
 /* Main Chat Area */
@@ -211,8 +217,11 @@ body {
 }
 
 .topbar-action-btn:hover {
-  background: #f4f4f4;
-  border-color: #d1d1d1;
+  background: var(--ayur-sage-light);
+  border-color: var(--ayur-sage);
+  color: var(--ayur-sage);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
 }
 
 .topbar-action-btn svg {
@@ -220,22 +229,38 @@ body {
 }
 
 .panel-close {
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: #000;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: #2d3436;
   color: white;
   border: none;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.88rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.panel-close:hover {
+  background: #000;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .chat-topbar-copy {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+  margin: 0 24px;
+}
+
+.chat-topbar-copy h2 {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1.1rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ayur-forest);
 }
 
 /* Messages */
@@ -396,21 +421,29 @@ body {
 
 .session-card-title {
   font-weight: 600;
-  font-size: 0.88rem;
-  color: #111;
+  font-size: 0.9rem;
+  color: var(--text-main);
   display: block;
+  line-height: 1.35;
+  margin-bottom: 4px;
+  /* Allow 2 lines of text then truncate */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .session-card-preview {
-  font-size: 0.75rem;
-  color: #666;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: 2px;
+  opacity: 0.7;
+  font-weight: 400;
 }
 
 .session-card-meta {
@@ -489,14 +522,28 @@ body {
   cursor: col-resize;
   background: transparent;
   flex-shrink: 0;
-  transition: background 0.2s;
+  transition: all 0.2s;
   z-index: 200;
+  position: relative;
 }
 
-.panel-resizer:hover,
-body.panel-resizing .panel-resizer {
+.panel-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border-color);
+  transform: translateX(-50%);
+  transition: all 0.2s;
+}
+
+.panel-resizer:hover::after,
+body.panel-resizing .panel-resizer::after {
+  width: 2px;
   background: var(--accent-color);
-  opacity: 0.4;
+  box-shadow: 0 0 8px rgba(78, 108, 97, 0.4);
 }
 
 body.sidebar-resizing, 
@@ -566,25 +613,6 @@ body.panel-resizing * {
   flex-wrap: wrap;
 }
 
-.option-btn {
-  padding: 8px 18px;
-  border-radius: 9999px;
-  border: 1px solid #d1d1d1;
-  background: white;
-  color: var(--text-main);
-  font-size: 0.88rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.option-btn:hover {
-  background: #f9f9f9;
-  border-color: #b1b1b1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
 
 .action-btn-large {
   padding: 10px 20px;
@@ -601,6 +629,8 @@ body.panel-resizing * {
 .action-btn-large:hover {
   background: var(--accent-color);
   color: white;
+  box-shadow: 0 4px 12px rgba(78, 108, 97, 0.2);
+  transform: translateY(-1px);
 }
 
 .post-report-options {
@@ -689,11 +719,26 @@ body.panel-resizing * {
   cursor: col-resize;
   background: transparent;
   flex-shrink: 0;
-  transition: background 0.2s;
+  transition: all 0.2s;
   z-index: 200;
+  position: relative;
 }
 
-.sidebar-resizer:hover {
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border-color);
+  transform: translateX(-50%);
+  transition: all 0.2s;
+}
+
+.sidebar-resizer:hover::after,
+body.sidebar-resizing .sidebar-resizer::after {
+  width: 2px;
   background: var(--accent-color);
-  opacity: 0.4;
+  box-shadow: 0 0 8px rgba(78, 108, 97, 0.4);
 }

@@ -59,6 +59,13 @@ const BotIcon = () => (
   </div>
 )
 
+const PlusIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="5" x2="12" y2="19"></line>
+    <line x1="5" y1="12" x2="19" y2="12"></line>
+  </svg>
+)
+
 function createSession(title = 'New consultation') {
   const now = new Date().toISOString()
   return {
@@ -136,8 +143,11 @@ function createSessionTitleFromDiagnosis(diagnosisText) {
 
     if (start !== -1 && end !== -1) {
       const report = JSON.parse(cleanedJson.substring(start, end + 1))
-      const diagnosisName = report?.diagnosis?.name?.replace(/\s+/g, ' ').trim()
-      if (diagnosisName) return diagnosisName
+      const rawName = report?.diagnosis?.name
+      if (rawName) {
+        // Strip out anything in parentheses for a cleaner "Major Diagnosis" display
+        return rawName.split('(')[0].replace(/\*/g, '').replace(/\s+/g, ' ').trim()
+      }
     }
   } catch (_error) {
     // Fall back to the default title when report parsing fails.
@@ -148,6 +158,12 @@ function createSessionTitleFromDiagnosis(diagnosisText) {
 
 // Re-export for backward compatibility
 export { sanitizeMarkdownText } from './utils/textUtils'
+
+function formatTitleForDisplay(title) {
+  if (!title || title === 'New consultation') return title || 'New consultation'
+  // Remove markdown symbols and anything in parentheses
+  return title.split('(')[0].replace(/\*/g, '').replace(/\s+/g, ' ').trim()
+}
 
 function getSessionPreview(session) {
   const lastMessage = [...session.messages].reverse().find(message => !message.isThinking)
@@ -201,6 +217,7 @@ function DoctorsPanel({ diagnosisText }) {
 
 function MessageActions({
   showPostReportOptions,
+  recipesExisting,
   onAskAboutReport,
   onRecipes,
   onFindDoctors
@@ -210,8 +227,8 @@ function MessageActions({
   return (
     <div className="msg-actions">
       <div className="button-options post-report-options">
-        <button type="button" className="option-btn" onClick={onAskAboutReport}>Ask about report</button>
-        <button type="button" className="action-btn-large" onClick={onRecipes}>Get recipes</button>
+        <button type="button" className="action-btn-large" onClick={onAskAboutReport}>Ask about report</button>
+        {!recipesExisting && <button type="button" className="action-btn-large" onClick={onRecipes}>Get recipes</button>}
         <button type="button" className="action-btn-large" onClick={onFindDoctors}>Find doctors</button>
       </div>
     </div>
@@ -222,6 +239,7 @@ function MessageBubble({
   message,
   isLastMessage,
   showPostReportOptions,
+  recipesExisting,
   onAskAboutReport,
   onRecipes,
   onFindDoctors
@@ -251,6 +269,7 @@ function MessageBubble({
         {isLastMessage && (
           <MessageActions
             showPostReportOptions={showPostReportOptions}
+            recipesExisting={recipesExisting}
             onAskAboutReport={onAskAboutReport}
             onRecipes={onRecipes}
             onFindDoctors={onFindDoctors}
@@ -631,7 +650,10 @@ export default function Chat() {
     >
       <aside className={`session-sidebar${sidebarOpen ? '' : ' hidden'}`}>
         <div className="sidebar-header sidebar-header-chatgpt">
-          <button type="button" className="new-session-button new-session-button-chatgpt" onClick={handleNewSession}>+ New chat</button>
+          <button type="button" className="new-session-button new-session-button-chatgpt" onClick={handleNewSession}>
+            <PlusIcon />
+            <span>New chat</span>
+          </button>
         </div>
 
         <div className="session-list">
@@ -647,7 +669,7 @@ export default function Chat() {
                   onClick={() => handleSelectSession(session.id)}
                   aria-current={session.id === activeSession?.id ? 'page' : undefined}
                 >
-                  <span className="session-card-title">{session.title}</span>
+                  <span className="session-card-title">{formatTitleForDisplay(session.title)}</span>
                   <span className="session-card-preview">{getSessionPreview(session)}</span>
                 </button>
               </div>
@@ -696,7 +718,7 @@ export default function Chat() {
             {/* Topbar toggle removed - sidebar has its own tabs */}
           </div>
           <div className="chat-topbar-copy">
-            <h2>{activeSession?.title || 'New consultation'}</h2>
+            <h2>{formatTitleForDisplay(activeSession?.title || 'New consultation')}</h2>
           </div>
           <div className="chat-topbar-actions">
             {activeSession?.diagnosis && (
@@ -752,6 +774,7 @@ export default function Chat() {
                 message={message}
                 isLastMessage={index === activeSession.messages.length - 1}
                 showPostReportOptions={activeSession.showPostReportOptions}
+                recipesExisting={Boolean(activeSession.recipesText)}
                 onAskAboutReport={handleAskAboutReport}
                 onRecipes={handleRecipes}
                 onFindDoctors={handleFindDoctors}
