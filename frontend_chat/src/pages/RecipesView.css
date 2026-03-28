@@ -1,78 +1,236 @@
+/* Premium Ayurvedic Recipes UI Redesign */
 
-.recipes-page {
-  position: fixed;
-  top: 0;
-  left: 0;
+.recipes-view {
+  --ayur-primary: #1F2A26;
+  /* Deep Forest */
+  --ayur-secondary: #9B6B43;
+  /* Soft Copper/Gold */
+  --ayur-text: #3A4541;
+  /* Main Body */
+  --ayur-text-light: #6E7C77;
+  /* Subtle text */
+  --ayur-accent: #789B8D;
+  /* Sage accent */
+  --line: #E2E8E5;
+  /* Borders */
+  --sage-50: #F6F8F7;
+  /* Very soft background */
+  --sage-100: #ECF1EF;
+  /* Light accent bg */
+
   width: 100%;
-  height: 100%;
-  background: #f8fafc;
-  z-index: 1000;
-  overflow-y: auto;
-  padding: 24px;
-  animation: slideUp 0.3s ease-out;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-@keyframes slideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
-}
-
-.recipes-header {
-  max-width: 800px;
-  margin: 0 auto 32px;
+.recipes-view.embedded {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  flex-direction: column;
+  flex: 1;
 }
 
-.recipes-header h1 {
-  font-size: 1.5rem;
-  color: #1e293b;
+.recipes-header-copy {
+  margin-bottom: 32px;
 }
 
-.back-btn {
-  background: white;
-  border: 1px solid #e2e8f0;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  color: #64748b;
-  transition: all 0.2s;
+.recipes-header-copy.standalone {
+  margin-bottom: 40px;
 }
 
-.back-btn:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+.recipes-eyebrow {
+  margin-bottom: 8px;
+  color: var(--ayur-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.recipes-header-copy h1 {
+  margin-bottom: 12px;
+  font-size: 1.8rem;
+  color: var(--ayur-primary);
+  letter-spacing: -0.02em;
+}
+
+.recipes-subtitle {
+  max-width: 680px;
+  color: var(--ayur-text-light);
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .recipes-content {
-  max-width: 800px;
-  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 36px;
 }
 
-.recipe-card {
-  background: white;
-  border-radius: 16px;
+.recipes-intro-card {
   padding: 24px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  background: var(--sage-50);
+  border-left: 4px solid var(--ayur-secondary);
+}
+
+.recipes-intro-card p {
+  color: var(--ayur-primary);
+  font-size: 1rem;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+/* Base Recipe Card */
+.recipe-card {
+  display: flex;
+  flex-direction: column;
+  padding: 32px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 24px rgba(31, 42, 38, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+
+.recipe-card:hover {
+  box-shadow: 0 8px 32px rgba(31, 42, 38, 0.08);
+}
+
+/* Card Header Area */
+.recipe-card-top {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.recipe-badge {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 6px 14px;
+  border-radius: 30px;
+  background: var(--sage-100);
+  color: var(--ayur-primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .recipe-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1a73e8;
   margin-bottom: 12px;
-  border-bottom: 2px solid #e8f0fe;
-  padding-bottom: 8px;
+  color: var(--ayur-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
 }
 
-.recipe-text {
-  color: #334155;
-  margin-bottom: 8px;
+.recipe-intro {
+  color: var(--ayur-text-light);
+  font-size: 1rem;
   line-height: 1.6;
+}
+
+/* Sections Grid */
+.recipe-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Generic Section styling */
+.recipe-section {
+  display: flex;
+  flex-direction: column;
+  /* Completely stripped all colorful backgrounds & borders from sections! */
+}
+
+.recipe-section h3 {
+  margin-bottom: 16px;
+  color: var(--ayur-secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Standard Bullet-List (Ingredients, Benefits, etc) */
+.recipe-section ul {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 0;
+  margin: 0;
+}
+
+.recipe-section li {
+  position: relative;
+  padding-left: 20px;
+  color: var(--ayur-text);
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+
+/* Smooth Sage Bullet Point */
+.recipe-section li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ayur-accent);
+}
+
+/* Steps Styling (Preparation) */
+.recipe-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0;
+  margin: 0;
+}
+
+.recipe-steps li {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.step-label {
+  display: flex;
+  min-width: 65px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--ayur-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.recipe-steps p {
+  flex: 1;
+  color: var(--ayur-text);
+  font-size: 0.98rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .recipe-card {
+    padding: 24px;
+  }
+
+  .recipe-section ul {
+    grid-template-columns: 1fr;
+  }
+
+  .recipe-title {
+    font-size: 1.3rem;
+  }
 }
