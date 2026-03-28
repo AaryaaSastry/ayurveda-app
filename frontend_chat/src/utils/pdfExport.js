@@ -12,6 +12,13 @@ export function downloadMedicalReportPDF(report) {
     const HEADER_BLUE = [44, 70, 61]
     const LABEL_BLUE = [225, 236, 230]
 
+    const isEmpty = (val) => {
+      if (!val) return true;
+      if (Array.isArray(val)) return val.length === 0;
+      if (typeof val === 'string') return val.trim() === '' || val.trim().toLowerCase() === 'not provided' || val.trim().toLowerCase() === 'n/a' || val.trim().toLowerCase() === 'n.a.';
+      return false;
+    };
+
     // Helper to draw a standard cell in the grid
     const drawCell = (x, y, w, h, text, isLabel = false, align = 'justify') => {
       doc.setDrawColor(50, 50, 50);
@@ -54,29 +61,50 @@ export function downloadMedicalReportPDF(report) {
     doc.setFontSize(14);
     doc.text("Patient's Copy", 20, 28);
 
-    // Right side AI Logo (Magic Sparkles)
+    // --- AI GENERATED BADGE (top-right of header) ---
+    const bx = pageWidth - 40;
+    const by = 7;
+
+    // Badge background - rounded rectangle with green theme
+    doc.setFillColor(60, 100, 85);
     doc.setDrawColor(255, 255, 255);
     doc.setLineWidth(0.5);
-    doc.rect(pageWidth - 85, 12, 12, 12, 'S'); // Square box
+    doc.roundedRect(bx, by, 24, 26, 2, 2, 'FD');
 
-    doc.setFillColor(255, 255, 255);
-    const drawSpark = (cx, cy, r) => {
-      const s = r * 0.25; // Spark inner thickness
-      doc.triangle(cx, cy - r, cx + s, cy - s, cx - s, cy - s, 'F'); // Top
-      doc.triangle(cx, cy + r, cx + s, cy + s, cx - s, cy + s, 'F'); // Bottom
-      doc.triangle(cx + r, cy, cx + s, cy - s, cx + s, cy + s, 'F'); // Right
-      doc.triangle(cx - r, cy, cx - s, cy - s, cx - s, cy + s, 'F'); // Left
-      doc.rect(cx - s, cy - s, s * 2, s * 2, 'F'); // Center connection
-    };
+    // Inner border line
+    doc.setDrawColor(200, 220, 210);
+    doc.setLineWidth(0.2);
+    doc.roundedRect(bx + 1, by + 1, 22, 24, 1.5, 1.5, 'S');
 
-    // Draw two magical sparks representing AI intelligence
-    drawSpark(pageWidth - 80, 19, 3.5);
-    drawSpark(pageWidth - 75.5, 15.5, 1.8);
+    // Top label "VERIFIED"
+    doc.setFillColor(44, 70, 61);
+    doc.roundedRect(bx + 3, by + 2.5, 18, 5, 1, 1, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(3.5);
+    doc.text('VERIFIED', bx + 12, by + 6, { align: 'center' });
 
+    // Large "AI" text
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.setFont('times', 'bold');
-    doc.text('Ayurveda Clinical', pageWidth - 68, 16);
-    doc.text('Assistant', pageWidth - 68, 22);
+    doc.text('AI', bx + 12, by + 16, { align: 'center' });
+
+    // Divider line
+    doc.setDrawColor(180, 210, 195);
+    doc.setLineWidth(0.3);
+    doc.line(bx + 5, by + 18, bx + 19, by + 18);
+
+    // "GENERATED" bottom label
+    doc.setTextColor(200, 225, 215);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(3);
+    doc.text('GENERATED', bx + 12, by + 22, { align: 'center' });
+
+    // Small decorative circles at corners
+    doc.setFillColor(200, 225, 215);
+    doc.circle(bx + 2, by + 2, 0.5, 'F');
+    doc.circle(bx + 22, by + 2, 0.5, 'F');
 
     // --- PATIENT DEMOGRAPHICS ---
     let y = 50;
@@ -92,8 +120,10 @@ export function downloadMedicalReportPDF(report) {
     // Row 1
     drawCell(20, y, 25, 10, 'Name', true);
     drawCell(45, y, 35, 10, 'Patient', false, 'left');
-    drawCell(80, y, 25, 10, 'Gender', true);
-    drawCell(105, y, 30, 10, report.patientInfo?.gender || 'N/A', false, 'left');
+    if (!isEmpty(report.patientInfo?.gender)) {
+      drawCell(80, y, 25, 10, 'Gender', true);
+      drawCell(105, y, 30, 10, report.patientInfo.gender, false, 'left');
+    }
     drawCell(135, y, 25, 10, 'Location', true);
     drawCell(160, y, 30, 10, 'Online Consult', false, 'left');
     y += 10;
@@ -103,19 +133,28 @@ export function downloadMedicalReportPDF(report) {
     drawCell(45, y, 35, 10, reportId, false, 'left');
     drawCell(80, y, 25, 10, 'Date', true);
     drawCell(105, y, 30, 10, currentDate, false, 'left');
-    drawCell(135, y, 25, 10, 'Age', true);
-    drawCell(160, y, 30, 10, report.patientInfo?.age || 'N/A', false, 'left');
+    if (!isEmpty(report.patientInfo?.age)) {
+      drawCell(135, y, 25, 10, 'Age', true);
+      drawCell(160, y, 30, 10, report.patientInfo.age, false, 'left');
+    }
     y += 15;
 
     // --- PATIENT VITALS ---
-    doc.setFillColor(LABEL_BLUE[0], LABEL_BLUE[1], LABEL_BLUE[2]);
-    doc.rect(20, y, 170, 8, 'F'); // Full width vitals block
-    doc.setFont('times', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(20, 20, 20);
-    doc.text('Patient Vitals:    Height: ' + (report.patientInfo?.height || 'N.A.') + '     /     Weight: ' + (report.patientInfo?.weight || 'N.A.'), 24, y + 5.5);
-
-    y += 12;
+    const hasHeight = !isEmpty(report.patientInfo?.height);
+    const hasWeight = !isEmpty(report.patientInfo?.weight);
+    if (hasHeight || hasWeight) {
+      doc.setFillColor(LABEL_BLUE[0], LABEL_BLUE[1], LABEL_BLUE[2]);
+      doc.rect(20, y, 170, 8, 'F');
+      doc.setFont('times', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(20, 20, 20);
+      let vitalsText = 'Patient Vitals:';
+      if (hasHeight) vitalsText += '    Height: ' + report.patientInfo.height;
+      if (hasHeight && hasWeight) vitalsText += '     /';
+      if (hasWeight) vitalsText += '     Weight: ' + report.patientInfo.weight;
+      doc.text(vitalsText, 24, y + 5.5);
+      y += 12;
+    }
 
     // --- CLINICAL OBSERVATIONS ---
     doc.setFillColor(HEADER_BLUE[0], HEADER_BLUE[1], HEADER_BLUE[2]); // Dark blue header
@@ -126,15 +165,15 @@ export function downloadMedicalReportPDF(report) {
     doc.text('Medical / Clinical / Symptom History', 105, y + 5.5, { align: 'center' });
     y += 8;
 
-    const symptomsStr = report.symptomsReported?.length ? report.symptomsReported.join('; ') : 'N.A.';
-    const prakritiStr = report.patientInfo?.constitution || 'N.A.';
+    const symptomsStr = report.symptomsReported?.length ? report.symptomsReported.join('; ') : '';
+    const prakritiStr = report.patientInfo?.constitution || '';
 
     doc.setFont('times', 'normal');
     doc.setFontSize(10);
-    const sympTextHeight = Math.max(12, doc.splitTextToSize(symptomsStr, 166).length * 5.3);
-    const prakTextHeight = Math.max(12, doc.splitTextToSize(prakritiStr, 166).length * 5.3);
+    const sympTextHeight = isEmpty(symptomsStr) ? 0 : Math.max(12, doc.splitTextToSize(symptomsStr, 166).length * 5.3);
+    const prakTextHeight = isEmpty(prakritiStr) ? 0 : Math.max(12, doc.splitTextToSize(prakritiStr, 166).length * 5.3);
 
-    const blockHeight = sympTextHeight + prakTextHeight + 20;
+    const blockHeight = sympTextHeight + prakTextHeight + (isEmpty(symptomsStr) && isEmpty(prakritiStr) ? 12 : 20);
 
     doc.setFillColor(LABEL_BLUE[0], LABEL_BLUE[1], LABEL_BLUE[2]); // Light blue body
     doc.rect(20, y, 170, blockHeight, 'F');
@@ -144,18 +183,21 @@ export function downloadMedicalReportPDF(report) {
 
     doc.setTextColor(20, 20, 20);
 
-    // Draw Symptoms Header & Body
-    doc.setFont('times', 'bold');
-    doc.text('Reported Symptoms:', 22, y + 6);
-    doc.setFont('times', 'normal');
-    doc.text(symptomsStr, 24, y + 12, { maxWidth: 164, align: 'left', lineHeightFactor: 1.5 });
+    let nextY = y;
+    if (!isEmpty(symptomsStr)) {
+      doc.setFont('times', 'bold');
+      doc.text('Reported Symptoms:', 22, y + 6);
+      doc.setFont('times', 'normal');
+      doc.text(symptomsStr, 24, y + 12, { maxWidth: 164, align: 'left', lineHeightFactor: 1.5 });
+      nextY = y + 12 + sympTextHeight;
+    }
 
-    const nextY = y + 12 + sympTextHeight;
-
-    // Draw Prakriti Header & Body
-    doc.setFont('times', 'bold');
-    doc.setFont('times', 'normal');
-    doc.text(prakritiStr, 24, nextY + 6, { maxWidth: 164, align: 'left', lineHeightFactor: 1.5 });
+    if (!isEmpty(prakritiStr)) {
+      doc.setFont('times', 'bold');
+      doc.text('Prakriti:', 22, nextY + 6);
+      doc.setFont('times', 'normal');
+      doc.text(prakritiStr, 24, nextY + 12, { maxWidth: 164, align: 'left', lineHeightFactor: 1.5 });
+    }
 
     y += blockHeight + 10;
 
@@ -169,7 +211,8 @@ export function downloadMedicalReportPDF(report) {
     };
 
     const drawDataRowDynamic = (label, value) => {
-      const valString = Array.isArray(value) ? value.join('; ') : String(value || 'N.A.');
+      if (isEmpty(value)) return;
+      const valString = Array.isArray(value) ? value.join('; ') : String(value);
       let h = calculateHeight(valString, 110);
 
       if (y + h > pageHeight - 20) {
@@ -186,28 +229,45 @@ export function downloadMedicalReportPDF(report) {
 
     drawDataRowDynamic('Principal Doctor', 'Ayurveda AI Clinical Assistant');
 
-    drawDataRowDynamic('Principal Diagnosis', report.diagnosis?.name || 'N.A.');
+    drawDataRowDynamic('Principal Diagnosis', report.diagnosis?.name);
 
-    drawDataRowDynamic('Reason / Clinical Assessment', report.diagnosis?.reasoning || 'N.A.');
+    drawDataRowDynamic('Reason / Clinical Assessment', report.diagnosis?.reasoning);
 
-    const pathyaStr = report.dietaryGuide?.toConsume?.join('; ') || 'N.A.';
-    drawDataRowDynamic('Dietary Inclusion (Pathya)', pathyaStr);
+    drawDataRowDynamic('Dietary Inclusion (Pathya)', report.dietaryGuide?.toConsume);
 
-    const apathyaStr = report.dietaryGuide?.toAvoid?.join('; ') || 'N.A.';
-    drawDataRowDynamic('Dietary Restriction (Apathya)', apathyaStr);
+    drawDataRowDynamic('Dietary Restriction (Apathya)', report.dietaryGuide?.toAvoid);
 
-    const lifestyleStr = report.lifestyleChanges?.join('; ') || 'N.A.';
-    drawDataRowDynamic('Lifestyle Adjustments', lifestyleStr);
+    drawDataRowDynamic('Lifestyle Adjustments', report.lifestyleChanges);
 
-    const herbalStr = report.herbalPreparations?.map(h => `${h.name} (${h.purpose})`).join('; ') || 'N.A.';
-    drawDataRowDynamic('Herbal Formulations', herbalStr);
+    const herbalArr = report.herbalPreparations?.length ? report.herbalPreparations.map(h => `${h.name} (${h.purpose})`) : null;
+    drawDataRowDynamic('Herbal Formulations', herbalArr);
+
+    y += 10; // Space between table and disclaimer
+
+    // --- DISCLAIMER BLOCK ---
+    if (y + 25 > pageHeight - 20) {
+      doc.addPage();
+      y = 20;
+    }
+    doc.setFillColor(255, 243, 205); // Light warning yellow
+    doc.setDrawColor(180, 150, 50);
+    doc.setLineWidth(0.5);
+    doc.rect(20, y, 170, 18, 'FD');
+    doc.setFont('times', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(120, 80, 0);
+    doc.text('DISCLAIMER: This report is generated by an AI-based Ayurveda Clinical Assistant.', 105, y + 6, { align: 'center' });
+    doc.setFont('times', 'normal');
+    doc.text('This is NOT a substitute for professional medical advice, diagnosis, or treatment.', 105, y + 11, { align: 'center' });
+    doc.text('Always consult a qualified healthcare practitioner before making medical decisions.', 105, y + 16, { align: 'center' });
+    y += 22;
 
     // --- FOOTER ---
     const drawFooter = () => {
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setTextColor(30, 30, 30);
       doc.setFont('times', 'normal');
-      doc.text('Ayurveda Clinical Assistant Official Copy', 105, pageHeight - 10, { align: 'center' });
+      doc.text('AI-GENERATED REPORT — Not a substitute for professional medical advice.   |   Ayurveda Clinical Assistant Official Copy', 105, pageHeight - 7, { align: 'center' });
     }
 
     const pageCount = doc.internal.getNumberOfPages();
