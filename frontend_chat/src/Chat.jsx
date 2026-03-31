@@ -23,6 +23,7 @@ import {
 import './report.css';
 import ReportRenderer from './ReportRenderer';
 import RecipesView from './pages/RecipesView';
+import FindDoctors from './pages/dashboard/FindDoctors';
 import { sanitizeMarkdownText } from './utils/textUtils';
 import { downloadMedicalReportPDF } from './utils/pdfExport';
 import { chatApi } from './services/api';
@@ -204,7 +205,7 @@ const Chat = () => {
         setTimeout(() => {
           setSessions(prev => prev.map(s => s._id === sessId ? {
             ...s,
-            messages: [...s.messages, { role: 'bot', text: 'Diagnostic analysis complete. I have generated a personalized wellness plan for you based on your results. You can download the full report or view your strategy above.' }]
+            messages: [...s.messages, { role: 'bot', text: 'Diagnostic analysis complete. Based on your diagnosis and the suggested treatments, I recommend consulting with our specialized doctors. You can view the full list by clicking the \'Recommended Doctors\' button next to your report.' }]
           } : s));
         }, 1000);
       } else {
@@ -308,6 +309,16 @@ const Chat = () => {
                   <span>Plan</span>
                 </button>
              )}
+             {diagnosisCompleted && (
+                <button
+                  onClick={() => setActiveSidePanel('doctors')}
+                  className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-gray-200 text-black rounded-[12px] text-[10px] font-black uppercase tracking-[1px] shadow-sm hover:border-black active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
+                  title="Recommended Doctors"
+                >
+                  <Stethoscope size={14} className="text-blue-500" />
+                  <span>Doctors</span>
+                </button>
+             )}
            </div>
         </div>
 
@@ -379,6 +390,13 @@ const Chat = () => {
                                 >
                                   <Sparkles size={16} fill="currentColor" className="text-emerald-500" />
                                   <span>View Wellness Plan</span>
+                                </button>
+                                <button
+                                  onClick={() => setActiveSidePanel('doctors')}
+                                  className="flex items-center gap-2.5 px-6 py-3.5 bg-white border-2 border-gray-200 text-black rounded-[14px] text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:border-black transition-all active:scale-95"
+                                >
+                                  <Stethoscope size={16} fill="currentColor" className="text-blue-500" />
+                                  <span>Recommended Doctors</span>
                                 </button>
                               </div>
                             </div>
@@ -467,23 +485,29 @@ const Chat = () => {
             className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-ayur-sage/30 active:bg-ayur-sage/60 z-50 transition-colors"
             onMouseDown={startResizingPanel}
           ></div>
-          <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-white relative">
+          <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-white relative shrink-0">
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-ayur-sage to-ayur-forest"></div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                 <Sparkles size={14} className="text-emerald-500" />
-                 <h4 className="text-[10px] font-black uppercase text-ayur-sage tracking-[3px]">Wellness Strategy</h4>
+                 {activeSidePanel === 'recipes' ? <Sparkles size={14} className="text-emerald-500" /> : <Stethoscope size={14} className="text-blue-500" />}
+                 <h4 className="text-[10px] font-black uppercase text-ayur-sage tracking-[3px]">{activeSidePanel === 'recipes' ? 'Wellness Strategy' : 'Practitioners'}</h4>
               </div>
-              <h3 className="text-2xl font-black text-ayur-forest capitalize tracking-tight">{activeSidePanel} Detail</h3>
+              <h3 className="text-2xl font-black text-ayur-forest capitalize tracking-tight">{activeSidePanel === 'recipes' ? 'Wellness Plan' : 'Recommended Doctors'}</h3>
             </div>
             <button onClick={() => setActiveSidePanel(null)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-2xl transition-all active:scale-90">
               <X size={24} />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto bg-gray-50/50">
-            <div className="p-2">
-               <RecipesView embedded recipes={activeSession?.recipesText || ''} />
-            </div>
+            {activeSidePanel === 'recipes' ? (
+              <div className="p-2">
+                 <RecipesView embedded recipes={activeSession?.recipesText || ''} />
+              </div>
+            ) : (
+              <div className="p-2 h-full">
+                 <FindDoctors embedded diagnosis={activeSession?.diagnosis} />
+              </div>
+            )}
           </div>
         </div>
       )}

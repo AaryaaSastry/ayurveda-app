@@ -28,6 +28,7 @@ export const patientApi = {
 
 export const publicApi = {
   getNearbyDoctors: (lat, lng) => api.get(`/public/doctors/nearby?lat=${lat}&lng=${lng}`),
+  getAllDoctors: () => api.get('/public/doctors/nearby?all=true'),
   bookAppointment: (data) => api.post('/public/appointments/book', data),
 };
 
