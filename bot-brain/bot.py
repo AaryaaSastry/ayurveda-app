@@ -92,7 +92,7 @@ def get_next_question(symptoms, history):
     if len(history) == 0:
         return (
             "Namaste! I am your Ayurvedic AI assistant. I am here to help you understand your health through the wisdom of Ayurveda. Let's begin by getting to know you better.---NEXT_BUBBLE---"
-            "To provide an accurate assessment, could you please share your basic details? I need your Age, Gender, Height, Weight, and any major lifestyle factors (like diet or sleep patterns)."
+            "To provide an accurate assessment, could you please share your basic details? I need your Name, Age, Gender, Height, Weight, and any major lifestyle factors (like diet or sleep patterns)."
         )
 
     # 2. Q&A MODE AFTER DIAGNOSIS (Move this checking down so it doesn't catch empty history)
@@ -186,7 +186,7 @@ def diagnose(symptoms, history):
             "PART 2: DETAILED MEDICAL REPORT (JSON FORMAT)\n"
             "Provide a full medical report as a valid JSON object with these keys:\n"
             "{\n"
-            "  \"patientInfo\": { \"age\": \"...\", \"gender\": \"...\", \"height\": \"...\", \"weight\": \"...\", \"constitution\": \"...\" },\n"
+            "  \"patientInfo\": { \"name\": \"...\", \"age\": \"...\", \"gender\": \"...\", \"height\": \"...\", \"weight\": \"...\", \"constitution\": \"...\" },\n"
             "  \"symptomsReported\": [\"...\", \"...\"],\n"
             "  \"diagnosis\": { \"name\": \"...\", \"reasoning\": \"...\" },\n"
             "  \"threatLevel\": \"Low/Moderate/High (based on symptoms like fever or acute pain)\",\n"
@@ -203,7 +203,7 @@ def diagnose(symptoms, history):
             "}\n"
             "\n"
             "CRITICAL:\n"
-            "- Extract age, gender, height, and weight from history (use 'Not provided' if missing).\n"
+            "- Extract name, age, gender, height, and weight from history (use 'Not provided' if missing).\n"
             "- The section after ---REPORT_DATA--- MUST be valid raw JSON only.\n"
             "- Tone must be professional and authoritative."
         )

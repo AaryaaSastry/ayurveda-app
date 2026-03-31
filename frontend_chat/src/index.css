@@ -1,744 +1,96 @@
+@import "tailwindcss";
+
 :root {
-  --ayur-forest: #2d4038;
-  --ayur-sage: #4e6c61;
-  --ayur-sage-light: #e8f0ed;
-  --sidebar-bg: #f8faf9;
-  --main-bg: #ffffff;
-  --border-color: #e2e8e5;
-  --text-main: #1a231f;
-  --text-secondary: #5a6a64;
-  --input-border: #cbdad4;
+  --sidebar-bg: #111916;
+  --main-bg: #fdfdfd;
+  --border-color: rgba(78, 108, 97, 0.08);
+  --text-main: #2d4038;
+  --text-secondary: #6d7b74;
   --accent-color: #4e6c61;
-  --user-bubble-bg: #4e6c61;
-  --bot-bubble-bg: #ffffff;
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(226, 232, 229, 0.5);
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+/* Base resets */
+html, body {
   background-color: var(--main-bg);
   color: var(--text-main);
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-}
-
-#root,
-.app-root {
+  font-family: 'Outfit', 'Inter', sans-serif;
   height: 100%;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
 }
 
-.app-main-chatgpt {
-  flex: 1;
-  width: 100%;
-  display: flex;
-  min-height: 0;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
 
-.app-navbar {
-  height: 75px;
-  background: #F4F7F5;
-  border-bottom: 1px solid #E2E8E5;
-  box-shadow: 0 1px 2px rgba(31, 42, 38, 0.05);
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  flex-shrink: 0;
-  z-index: 1000;
-}
-
-.app-navbar-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.app-logo-svg {
-  height: 38px;
-  width: auto;
-  border-radius: 4px;
-}
-
-.app-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1F2A26;
-  margin: 0;
-  letter-spacing: 0.2px;
-}
-
-.chat-layout {
-  display: flex;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
-
-/* Sidebar Styling */
-.session-sidebar {
-  width: var(--sidebar-width, 280px);
-  height: 100%;
-  background-color: var(--sidebar-bg);
-  border-right: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.3s ease;
-  flex-shrink: 0;
-  z-index: 100;
-  position: relative;
-}
-
-.session-sidebar.hidden {
-  width: 0;
-  transform: translateX(-100%);
-  border-right: none;
-}
-
-.sidebar-header-chatgpt {
-  padding: 12px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.new-session-button-chatgpt {
-  flex: 1;
-  padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  background: white;
-  color: var(--text-main);
-  font-weight: 600;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.new-session-button-chatgpt:hover {
-  background: var(--ayur-sage-light);
-  border-color: var(--ayur-sage);
-  transform: translateY(-1px);
-}
-
-.session-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.session-card {
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9rem;
+::-webkit-scrollbar-track {
   background: transparent;
-  border: 1px solid transparent;
 }
 
-.session-card:hover {
-  background: #f0f2f1;
+::-webkit-scrollbar-thumb {
+  background: rgba(78, 108, 97, 0.1);
+  border-radius: 20px;
 }
 
-.session-card.active {
-  background: var(--ayur-sage-light);
-  border-color: var(--glass-border);
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(78, 108, 97, 0.25);
 }
 
-/* Main Chat Area */
-.chat-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-width: 0;
-  background: white;
+/* Premium Styles */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-.chat-topbar {
-  height: 60px;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border-color);
-  position: relative;
+.clinical-shadow {
+  box-shadow: 0 10px 40px -10px rgba(45, 64, 56, 0.08);
 }
 
-.sidebar-toggle {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
+.premium-gradient-bg {
+  background: radial-gradient(circle at top left, rgba(78, 108, 97, 0.03), transparent 40%),
+              radial-gradient(circle at bottom right, rgba(232, 240, 237, 0.5), transparent 40%);
 }
 
-.sidebar-toggle:hover {
-  background: #f0f0f0;
+.prose p {
+  margin-bottom: 1.25em;
+  line-height: 1.7;
 }
 
-.chat-topbar-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.topbar-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  background: white;
-  color: var(--text-main);
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.topbar-action-btn:hover {
-  background: var(--ayur-sage-light);
-  border-color: var(--ayur-sage);
-  color: var(--ayur-sage);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+.animate-clinical-enter {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.topbar-action-btn svg {
-  color: var(--accent-color);
-}
-
-.panel-close {
-  padding: 8px 16px;
-  border-radius: 10px;
-  background: #2d3436;
-  color: white;
-  border: none;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.panel-close:hover {
-  background: #000;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.chat-topbar-copy {
-  flex: 1;
-  text-align: center;
-  min-width: 0;
-  margin: 0 24px;
-}
-
-.chat-topbar-copy h2 {
-  font-weight: 600;
-  font-size: 1.1rem;
-  margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--ayur-forest);
-}
-
-/* Messages */
-.chat-surface-chatgpt {
-  flex: 1;
-  overflow: hidden; /* Input area will be fixed outside this */
-  display: flex;
-  flex-direction: column;
-}
-
-.messages {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.msg {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  padding: 24px 16px;
-}
-
-.msg-content {
-  width: 100%;
-  max-width: 768px;
-  display: flex;
-  flex-direction: column;
-}
-
-.msg-icon-wrapper {
-  display: flex;
-  gap: 16px;
-  width: 100%;
-  align-items: flex-start;
-}
-
-.msg-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-top: 4px;
-}
-
-.msg-icon-user {
-  background: #000;
-  color: #fff;
-}
-
-.msg-icon-bot {
-  background: var(--accent-color);
-  color: white;
-}
-
-.msg-body {
-  flex: 1;
-  font-size: 1rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  color: var(--text-main);
-}
-
-/* Input Area */
-.controls-chatgpt {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-top: 1px solid var(--border-color);
-  background: var(--main-bg);
-  flex-shrink: 0;
-}
-
-.input-wrapper-chatgpt {
-  width: 100%;
-  max-width: 768px;
-  background: white;
-  border: 1px solid var(--input-border);
-  border-radius: 12px;
-  display: flex;
-  align-items: flex-end;
-  padding: 10px 14px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-}
-
-.chat-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-family: inherit;
-  font-size: 1rem;
-  line-height: 1.5;
-  padding: 4px 0;
-  resize: none;
-  max-height: 200px;
-}
-
-.send-button-chatgpt {
-  background: #000;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  margin-left: 8px;
-  flex-shrink: 0;
-  transition: background 0.2s;
-}
-
-.send-button-chatgpt:hover:not(:disabled) {
-  background: #333;
-}
-
-.send-button-chatgpt:disabled {
-  background: #f4f4f4;
-  color: #d7d7d7;
-  cursor: not-allowed;
-}
-
-.send-button-chatgpt svg {
-  width: 16px;
-  height: 16px;
-}
-
-/* Typographic detail for Markdown-like content */
-.msg-body h1,
-.msg-body h2,
-.msg-body h3 {
-  margin: 16px 0 8px;
-}
-
-/* Session Card Details */
-.session-card-main {
-  width: 100%;
-}
-
-.session-select {
-  width: 100%;
-  background: none;
-  border: none;
-  text-align: left;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-}
-
-.session-card-title {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--text-main);
-  display: block;
-  line-height: 1.35;
-  margin-bottom: 4px;
-  /* Allow 2 lines of text then truncate */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.session-card-preview {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.7;
-  font-weight: 400;
-}
-
-.session-card-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 6px;
-  font-size: 0.7rem;
-  color: #999;
-}
-
-.session-delete {
-  border: none;
-  background: none;
-  color: #ff4d4f;
-  cursor: pointer;
-  visibility: hidden;
-}
-
-.session-card:hover .session-delete {
-  visibility: visible;
-}
-
-/* Typing Indicator */
-.typing-indicator {
-  display: flex;
-  gap: 4px;
-  padding: 12px 0;
-}
-
-.typing-indicator span {
-  width: 8px;
-  height: 8px;
-  background: #e0e0e0;
-  border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out;
-}
-
-.typing-indicator span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing-indicator span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes bounce {
-
-  0%,
-  80%,
-  100% {
-    transform: scale(0);
-  }
-
-  40% {
-    transform: scale(1);
-  }
-}
-
-/* Side Panel (Recipes/Doctors) */
-.side-panel {
-  width: var(--panel-width, 420px);
-  height: 100%;
-  border-left: 1px solid var(--border-color);
-  background: #fafafa;
-  display: flex;
-  flex-direction: column;
-  z-index: 50;
-  flex-shrink: 0;
-}
-
-/* Panel resizer handle */
-.panel-resizer {
+.custom-scrollbar::-webkit-scrollbar {
   width: 4px;
-  height: 100%;
-  cursor: col-resize;
-  background: transparent;
-  flex-shrink: 0;
-  transition: all 0.2s;
-  z-index: 200;
-  position: relative;
 }
 
-.panel-resizer::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  background: var(--border-color);
-  transform: translateX(-50%);
-  transition: all 0.2s;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(78, 108, 107, 0.1);
+  border-radius: 10px;
 }
 
-.panel-resizer:hover::after,
-body.panel-resizing .panel-resizer::after {
-  width: 2px;
-  background: var(--accent-color);
-  box-shadow: 0 0 8px rgba(78, 108, 97, 0.4);
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(78, 108, 107, 0.2);
 }
 
-body.sidebar-resizing, 
-body.sidebar-resizing *,
-body.panel-resizing,
-body.panel-resizing * {
-  cursor: col-resize !important;
-  user-select: none !important;
+.invisible-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-
-.side-panel-header {
-  padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.side-panel-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.side-panel-note {
-  background: #fff;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  margin-bottom: 16px;
-}
-
-.side-panel-cta {
-  width: 100%;
-  padding: 12px;
-  background: #000;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* Chat Topbar Layout */
-.chat-topbar {
-  justify-content: space-between;
-}
-
-.sidebar-toggle-desktop {
-  display: flex;
-}
-
-/* Message Actions (Yes/No, Action Buttons) */
-.msg-actions {
-  margin-top: 12px;
-  margin-left: 44px;
-  /* Align with text after icon: icon width (28) + gap (16) */
-}
-
-.button-options {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-
-.action-btn-large {
-  padding: 10px 20px;
-  border-radius: 12px;
-  border: 1px solid var(--accent-color);
-  background: white;
-  color: var(--accent-color);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn-large:hover {
-  background: var(--accent-color);
-  color: white;
-  box-shadow: 0 4px 12px rgba(78, 108, 97, 0.2);
-  transform: translateY(-1px);
-}
-
-.post-report-options {
-  align-items: center;
-}
-
-/* Hidden state */
-.hidden {
-  display: none !important;
-}
-
-/* ===========================
-   SIDEBAR COLLAPSE / EXPAND TABS
-   =========================== */
-
-/* Sidebar must be position:relative to host the tab */
-.session-sidebar {
-  position: relative;
-  overflow: visible !important;
-}
-
-/* Collapse arrow tab — sits on the right edge of the open sidebar */
-.sidebar-collapse-tab {
-  position: absolute;
-  top: 50%;
-  right: -14px;
-  transform: translateY(-50%);
-  z-index: 200;
-  width: 14px;
-  height: 48px;
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  border-radius: 0 8px 8px 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  line-height: 1;
-  font-weight: 700;
-  transition: background 0.18s, width 0.18s;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.10);
-  padding: 0;
-}
-
-.sidebar-collapse-tab:hover {
-  background: var(--ayur-forest);
-  width: 18px;
-}
-
-/* Expand arrow tab — floats on left edge of screen when sidebar is hidden */
-.sidebar-expand-tab {
-  position: fixed;
-  top: 50%;
-  left: 0;
-  transform: translateY(-50%);
-  z-index: 300;
-  width: 14px;
-  height: 48px;
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  border-radius: 0 8px 8px 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  line-height: 1;
-  font-weight: 700;
-  transition: background 0.18s, width 0.18s;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.12);
-  padding: 0;
-}
-
-.sidebar-expand-tab:hover {
-  background: var(--ayur-forest);
-  width: 18px;
-}
-
-/* Sidebar resizer handle */
-.sidebar-resizer {
-  width: 4px;
-  height: 100%;
-  cursor: col-resize;
-  background: transparent;
-  flex-shrink: 0;
-  transition: all 0.2s;
-  z-index: 200;
-  position: relative;
-}
-
-.sidebar-resizer::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  background: var(--border-color);
-  transform: translateX(-50%);
-  transition: all 0.2s;
-}
-
-.sidebar-resizer:hover::after,
-body.sidebar-resizing .sidebar-resizer::after {
-  width: 2px;
-  background: var(--accent-color);
-  box-shadow: 0 0 8px rgba(78, 108, 97, 0.4);
+.invisible-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

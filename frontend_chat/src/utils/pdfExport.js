@@ -120,7 +120,7 @@ export function downloadMedicalReportPDF(report) {
 
     // Row 1
     drawCell(20, y, 25, 10, 'Name', true);
-    drawCell(45, y, 35, 10, 'Patient', false, 'left');
+    drawCell(45, y, 35, 10, report.patientInfo?.name || 'Patient', false, 'left');
     if (!isEmpty(report.patientInfo?.gender)) {
       drawCell(80, y, 25, 10, 'Gender', true);
       drawCell(105, y, 30, 10, report.patientInfo.gender, false, 'left');
@@ -237,9 +237,11 @@ export function downloadMedicalReportPDF(report) {
 
     drawDataRowDynamic('Principal Doctor', 'Ayurveda AI Clinical Assistant');
 
-    drawDataRowDynamic('Principal Diagnosis', report.diagnosis?.name);
+    const diagnosisName = typeof report.diagnosis === 'string' ? report.diagnosis : (report.diagnosis?.name || 'Ayurvedic Assessment');
+    drawDataRowDynamic('Principal Diagnosis', diagnosisName);
 
-    drawDataRowDynamic('Reason / Clinical Assessment', report.diagnosis?.reasoning);
+    const diagnosisReason = typeof report.diagnosis === 'object' ? report.diagnosis?.reasoning : null;
+    drawDataRowDynamic('Reason / Clinical Assessment', diagnosisReason);
 
     drawDataRowDynamic('Dietary Inclusion (Pathya)', report.dietaryGuide?.toConsume);
 
@@ -284,7 +286,8 @@ export function downloadMedicalReportPDF(report) {
       drawFooter();
     }
 
-    const safeName = (report.diagnosis?.name || 'Report').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const pdfFileName = typeof report.diagnosis === 'string' ? report.diagnosis : (report.diagnosis?.name || 'Report');
+    const safeName = pdfFileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
     const fileName = `discharge_summary_${safeName}.pdf`;
 
     doc.save(fileName)

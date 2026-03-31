@@ -1,32 +1,60 @@
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
+from bson.errors import InvalidId
+from datetime import datetime, timezone
 import json
 import os
+from dotenv import load_dotenv
 from bot import extract_symptoms_from_text, get_next_question, diagnose, should_give_diagnosis
+from gemini_client import send
 
-app = FastAPI(title="bot-brain AI API")
+load_dotenv()
 
-# Simple in-memory session store for demo
-sessions = {}
+# ─── App & DB setup ──────────────────────────────────────────────────────────
+app = FastAPI(title="AyurvedaBot AI API")
 
-@app.post("/chat")
-async def chat(user_id: str = "default_user", data: dict = Body(...)):
-    # Very loose extraction to support different frontend formats
-    message = data.get("message")
-    diagnosis_context = data.get("diagnosis")
-    if not message:
-        facts = data.get("facts")
-        if facts:
-            if isinstance(facts, list):
-                message = ", ".join([str(f) for f in facts])
-            else:
-                message = str(facts)
-        else:
-            # Last resort: use the whole body as a string
-            message = str(data)
+MONGODB_URI = os.getenv("MONGODB_URI", "")
+JWT_SECRET = os.getenv("JWT_SECRET", "doctor_portal_secret_key_123")
 
-    if user_id not in sessions:
-        sessions[user_id] = {
+mongo_client: AsyncIOMotorClient = None
+db = None
+
+
+@app.on_event("startup")
+async def startup():
+    global mongo_client, db
+    mongo_client = AsyncIOMotorClient(MONGODB_URI)
+    db = mongo_client["doctor_portal"]
+    # Ensure indexes
+    await db.chat_sessions.create_index("userId")
+    await db.chat_sessions.create_index("updatedAt")
+    print("✅ FastAPI connected to MongoDB")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    if mongo_client:
+        mongo_client.close()
+
+
+# ─── CORS ─────────────────────────────────────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ─── In-memory AI state (keyed by sessionId, cleared on restart is fine) ─────
+ai_sessions: dict = {}
+
+
+def get_ai_session(session_id: str) -> dict:
+    if session_id not in ai_sessions:
+        ai_sessions[session_id] = {
             "symptoms": [],
             "answers": {},
             "conversation_history": [],
@@ -34,113 +62,382 @@ async def chat(user_id: str = "default_user", data: dict = Body(...)):
             "confirmed_disease": None,
             "diagnosis_text": None
         }
-    
-    session = sessions[user_id]
+    return ai_sessions[session_id]
 
-    if diagnosis_context and not session.get("diagnosis_complete"):
-        session["diagnosis_complete"] = True
-        session["diagnosis_text"] = diagnosis_context
-        if diagnosis_context not in session["conversation_history"]:
-            session["conversation_history"].append(diagnosis_context)
-    
-    # Process user message
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+def serialize_session(doc: dict) -> dict:
+    """Convert MongoDB doc to JSON-safe dict."""
+    if doc is None:
+        return None
+    doc["_id"] = str(doc["_id"])
+    if "userId" in doc and isinstance(doc["userId"], ObjectId):
+        doc["userId"] = str(doc["userId"])
+    return doc
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+# ─── Chat Session CRUD endpoints ──────────────────────────────────────────────
+
+@app.post("/api/chat/create")
+async def create_chat_session(data: dict = Body(...)):
+    """Create a new empty chat session for a user."""
+    user_id_str = data.get("userId")
+    if not user_id_str:
+        raise HTTPException(status_code=400, detail="userId is required")
+
+    try:
+        user_oid = ObjectId(user_id_str)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid userId")
+
+    now = utcnow()
+    session_doc = {
+        "userId": user_oid,
+        "title": "New consultation",
+        "messages": [],
+        "diagnosis": None,
+        "recipesText": None,
+        "showPostReportOptions": False,
+        "hasAskedAboutReport": False,
+        "createdAt": now,
+        "updatedAt": now,
+    }
+    result = await db.chat_sessions.insert_one(session_doc)
+    session_doc["_id"] = str(result.inserted_id)
+    session_doc["userId"] = user_id_str
+    return serialize_session(session_doc)
+
+
+@app.get("/api/chat/sessions/{user_id}")
+async def get_user_sessions(user_id: str):
+    """Return all chat sessions for a user (summary only)."""
+    try:
+        user_oid = ObjectId(user_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid userId")
+
+    cursor = db.chat_sessions.find(
+        {"userId": user_oid},
+        {"title": 1, "updatedAt": 1, "createdAt": 1, "diagnosis": 1, "recipesText": 1,
+         "showPostReportOptions": 1, "hasAskedAboutReport": 1}
+    ).sort("updatedAt", -1)
+
+    sessions = []
+    async for doc in cursor:
+        sessions.append(serialize_session(doc))
+    return sessions
+
+
+@app.get("/api/chat/session/{session_id}")
+async def get_session(session_id: str):
+    """Return a full session including all messages."""
+    try:
+        session_oid = ObjectId(session_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid sessionId")
+
+    doc = await db.chat_sessions.find_one({"_id": session_oid})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return serialize_session(doc)
+
+
+@app.delete("/api/chat/session/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a chat session."""
+    try:
+        session_oid = ObjectId(session_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid sessionId")
+
+    result = await db.chat_sessions.delete_one({"_id": session_oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+    # Clean up in-memory AI state too
+    ai_sessions.pop(session_id, None)
+    return {"success": True}
+
+
+@app.patch("/api/chat/session/{session_id}")
+async def update_session_meta(session_id: str, data: dict = Body(...)):
+    """Update showPostReportOptions / hasAskedAboutReport flags."""
+    try:
+        session_oid = ObjectId(session_id)
+    except InvalidId:
+        raise HTTPException(status_code=400, detail="Invalid sessionId")
+
+    allowed = {"showPostReportOptions", "hasAskedAboutReport", "recipesText"}
+    update_data = {k: v for k, v in data.items() if k in allowed}
+    update_data["updatedAt"] = utcnow()
+
+    doc = await db.chat_sessions.find_one_and_update(
+        {"_id": session_oid},
+        {"$set": update_data},
+        return_document=True
+    )
+    return serialize_session(doc)
+
+
+# ─── Core /ask endpoint (now DB-backed) ───────────────────────────────────────
+
+@app.post("/ask")
+async def ask(user_id: str = "default_session", data: dict = Body(...)):
+    """
+    Main chat endpoint. user_id here is the sessionId (from frontend query param).
+    Persists messages to MongoDB.
+    """
+    session_id = user_id  # frontend sends ?user_id=<sessionId>
+    message = data.get("message", "")
+    diagnosis_context = data.get("diagnosis", "")
+
+    # Load/init AI state for this session
+    ai_state = get_ai_session(session_id)
+
+    # If session_id looks like a MongoDB ObjectId, try to restore AI state from DB
+    if len(session_id) == 24:
+        try:
+            session_oid = ObjectId(session_id)
+            db_session = await db.chat_sessions.find_one({"_id": session_oid})
+            if db_session and not ai_state["conversation_history"]:
+                # Restore history from stored messages so AI has context
+                for msg in db_session.get("messages", []):
+                    role = msg.get("role", "")
+                    text = msg.get("text", "")
+                    if role == "user":
+                        ai_state["conversation_history"].append(f"User: {text}")
+                    elif role == "bot" and text and not msg.get("isThinking"):
+                        ai_state["conversation_history"].append(text)
+                # Restore diagnosis state
+                if db_session.get("diagnosis"):
+                    ai_state["diagnosis_complete"] = True
+                    ai_state["diagnosis_text"] = db_session["diagnosis"]
+        except Exception:
+            pass
+
+    # Handle diagnosis context
+    if diagnosis_context and not ai_state.get("diagnosis_complete"):
+        ai_state["diagnosis_complete"] = True
+        ai_state["diagnosis_text"] = diagnosis_context
+
+    # Build message to save
+    now = utcnow()
+
     if message == "START_CONVERSATION":
-        # Do not add to symptoms or history for the trigger message
-        pass
-    else:
-        session["conversation_history"].append(f"User: {message}")
-        extracted = extract_symptoms_from_text(message)
-        if extracted:
-            session["symptoms"].extend(extracted)
-            session["symptoms"] = list(set(session["symptoms"]))
+        # Just get the greeting – don't save user message
+        next_q = get_next_question(ai_state["symptoms"], ai_state["conversation_history"])
+        ai_state["conversation_history"].append(next_q)
 
-    # Once a report has been generated, treat later messages as follow-up questions
-    # about that report instead of attempting to diagnose again.
-    if message != "START_CONVERSATION" and session.get("diagnosis_complete"):
-        next_q = get_next_question(session["symptoms"], session["conversation_history"])
-        session["conversation_history"].append(next_q)
-        return {
-            "type": "question",
-            "content": next_q,
-            "intelligence": {
-                "symptoms": session["symptoms"],
-                "prakriti": session.get("prakriti", "Evaluating..."),
-                "progress": 100
-            }
-        }
+        # Save bot greeting to DB (split by bubble separator)
+        if session_id and len(session_id) == 24:
+            try:
+                bubbles = [b.strip() for b in next_q.split("---NEXT_BUBBLE---") if b.strip()]
+                bot_msgs = [{"role": "bot", "text": b, "timestamp": now} for b in bubbles]
+                await db.chat_sessions.update_one(
+                    {"_id": ObjectId(session_id)},
+                    {"$push": {"messages": {"$each": bot_msgs}}, "$set": {"updatedAt": now}}
+                )
+            except Exception:
+                pass
 
-    # Logic flow
-    # Pass control entirely to the backend logic (bot.py / should_give_diagnosis)
-    if message != "START_CONVERSATION" and should_give_diagnosis(session["symptoms"], session["answers"], session["conversation_history"]):
-        diagnosis = diagnose(session["symptoms"], session["conversation_history"])
-        session["diagnosis_complete"] = True
-        session["diagnosis_text"] = diagnosis
-        session["conversation_history"].append(diagnosis)
-        return {"type": "diagnosis", "content": diagnosis}
-    
-    # Get the next question (or starting greeting)
-    next_q = get_next_question(session["symptoms"], session["conversation_history"])
-    session["conversation_history"].append(next_q)
-    
+        return {"type": "question", "content": next_q,
+                "intelligence": {"symptoms": ai_state["symptoms"], "progress": 0}}
+
+    # Save user message to DB
+    user_msg_doc = {"role": "user", "text": message, "timestamp": now}
+    if session_id and len(session_id) == 24:
+        try:
+            await db.chat_sessions.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$push": {"messages": user_msg_doc}, "$set": {"updatedAt": now}}
+            )
+        except Exception:
+            pass
+
+    ai_state["conversation_history"].append(f"User: {message}")
+    extracted = extract_symptoms_from_text(message)
+    if extracted:
+        ai_state["symptoms"].extend(extracted)
+        ai_state["symptoms"] = list(set(ai_state["symptoms"]))
+
+    # Follow-up after diagnosis
+    if ai_state.get("diagnosis_complete"):
+        next_q = get_next_question(ai_state["symptoms"], ai_state["conversation_history"])
+        ai_state["conversation_history"].append(next_q)
+
+        if session_id and len(session_id) == 24:
+            try:
+                bubbles = [b.strip() for b in next_q.split("---NEXT_BUBBLE---") if b.strip()]
+                bot_msgs = [{"role": "bot", "text": b, "timestamp": utcnow()} for b in bubbles]
+                await db.chat_sessions.update_one(
+                    {"_id": ObjectId(session_id)},
+                    {"$push": {"messages": {"$each": bot_msgs}}, "$set": {"updatedAt": utcnow()}}
+                )
+            except Exception:
+                pass
+        return {"type": "question", "content": next_q,
+                "intelligence": {"symptoms": ai_state["symptoms"], "progress": 100}}
+
+    # Should we diagnose now?
+    if should_give_diagnosis(ai_state["symptoms"], ai_state["answers"], ai_state["conversation_history"]):
+        diagnosis = diagnose(ai_state["symptoms"], ai_state["conversation_history"])
+        ai_state["diagnosis_complete"] = True
+        ai_state["diagnosis_text"] = diagnosis
+        ai_state["conversation_history"].append(diagnosis)
+
+        # Parse title from diagnosis
+        title = _extract_title(diagnosis)
+        # Extract ONLY the JSON part for the report renderer
+        report_json = diagnosis.split("---REPORT_DATA---")[-1] if "---REPORT_DATA---" in diagnosis else diagnosis
+        # Clean markdown code blocks if present
+        report_json = report_json.replace("```json", "").replace("```", "").strip()
+        
+        diagnosis_msg_doc = {"role": "report", "text": report_json, "timestamp": utcnow()}
+        if session_id and len(session_id) == 24:
+            try:
+                # 1. Update the chat session
+                await db.chat_sessions.update_one(
+                    {"_id": ObjectId(session_id)},
+                    {
+                        "$push": {"messages": diagnosis_msg_doc},
+                        "$set": {
+                            "diagnosis": report_json,
+                            "title": title,
+                            "updatedAt": utcnow()
+                        }
+                    }
+                )
+                
+                # 2. ALSO save to reports collection so it shows up in "My Consultations"
+                # get session info to find user_id
+                session = await db.chat_sessions.find_one({"_id": ObjectId(session_id)})
+                if session and "user_id" in session:
+                    # Clean the JSON for specific fields if we want, or just store the diagnosis string
+                    # The reports page expects diagnosis, symptoms, recommendations, date
+                    import json
+                    try:
+                        rj = json.loads(report_json)
+                        await db.reports.insert_one({
+                            "patientId": ObjectId(session["user_id"]),
+                            "diagnosis": rj.get("diagnosis", title),
+                            "symptoms": rj.get("findings", ""),
+                            "recommendations": rj.get("root_causes", ""),
+                            "date": utcnow().strftime("%Y-%m-%d"),
+                            "createdAt": utcnow()
+                        })
+                    except Exception as e:
+                        print(f"Error parsing JSON for report save: {e}")
+                        # Fallback if JSON fails
+                        await db.reports.insert_one({
+                            "patientId": ObjectId(session["user_id"]),
+                            "diagnosis": title,
+                            "symptoms": "AI Assessment",
+                            "recommendations": "Review session history",
+                            "date": utcnow().strftime("%Y-%m-%d"),
+                            "createdAt": utcnow()
+                        })
+            except Exception as e:
+                print(f"FAILED TO SAVE REPORT: {e}")
+        return {"type": "diagnosis", "content": report_json}
+
+    # Normal question
+    next_q = get_next_question(ai_state["symptoms"], ai_state["conversation_history"])
+    ai_state["conversation_history"].append(next_q)
+
+    if session_id and len(session_id) == 24:
+        try:
+            bubbles = [b.strip() for b in next_q.split("---NEXT_BUBBLE---") if b.strip()]
+            bot_msgs = [{"role": "bot", "text": b, "timestamp": utcnow()} for b in bubbles]
+            await db.chat_sessions.update_one(
+                {"_id": ObjectId(session_id)},
+                {"$push": {"messages": {"$each": bot_msgs}}, "$set": {"updatedAt": utcnow()}}
+            )
+        except Exception:
+            pass
+
     return {
-        "type": "question", 
+        "type": "question",
         "content": next_q,
         "intelligence": {
-            "symptoms": session["symptoms"],
-            "prakriti": session.get("prakriti", "Evaluating..."),
-            "progress": len(session["symptoms"]) * 20
+            "symptoms": ai_state["symptoms"],
+            "prakriti": ai_state.get("prakriti", "Evaluating..."),
+            "progress": len(ai_state["symptoms"]) * 20
         }
     }
 
-@app.post("/ask")
-async def ask(user_id: str = "default_user", data: dict = Body(...)):
-    """Alias for /chat to match frontend expectations"""
-    return await chat(user_id, data)
 
+# Alias for legacy /chat endpoint
+@app.post("/chat")
+async def chat(user_id: str = "default_user", data: dict = Body(...)):
+    return await ask(user_id, data)
+
+
+# ─── Save diagnosis explicitly ─────────────────────────────────────────────────
+
+@app.post("/api/chat/diagnosis")
+async def save_diagnosis(data: dict = Body(...)):
+    """Explicitly save a diagnosis report to a session."""
+    session_id = data.get("sessionId")
+    diagnosis = data.get("diagnosis", "")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="sessionId required")
+
+    title = _extract_title(diagnosis)
+    try:
+        await db.chat_sessions.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {"diagnosis": diagnosis, "title": title, "updatedAt": utcnow()}}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"success": True, "title": title}
+
+
+# ─── Save recipes ─────────────────────────────────────────────────────────────
+
+@app.post("/api/chat/recipes")
+async def save_recipes(data: dict = Body(...)):
+    """Save generated recipes text to a session."""
+    session_id = data.get("sessionId")
+    recipes_text = data.get("recipesText", "")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="sessionId required")
+    try:
+        await db.chat_sessions.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$set": {"recipesText": recipes_text, "updatedAt": utcnow()}}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"success": True}
+
+
+# ─── Recipes generation ────────────────────────────────────────────────────────
 
 @app.post("/recipes")
 async def recipes(user_id: str = "default_user", data: dict = Body(...)):
-    """
-    Generate personalized Ayurvedic recipes based on diagnosis and patient facts.
-    
-    Expected payload:
-    {
-        "facts": ["symptom1", "symptom2", ...],  # or string
-        "diagnosis": "diagnosis text or JSON",
-        "patientInfo": { "age": "...", "gender": "..." }  # optional
-    }
-    """
     facts = data.get("facts", [])
     diagnosis = data.get("diagnosis", "")
     patient_info = data.get("patientInfo", {})
-    
-    # Get session for additional context
-    session = sessions.get(user_id, {})
-    symptoms = session.get("symptoms", [])
-    
-    # Build context for recipe generation
+
+    ai_state = ai_sessions.get(user_id, {})
+    symptoms = ai_state.get("symptoms", [])
+
     context_parts = []
-    
     if facts:
-        if isinstance(facts, list):
-            context_parts.append(f"Patient symptoms: {', '.join(facts)}")
-        else:
-            context_parts.append(f"Patient symptoms: {facts}")
-    
+        context_parts.append(f"Patient symptoms: {', '.join(facts) if isinstance(facts, list) else facts}")
     if symptoms:
         context_parts.append(f"Extracted symptoms: {', '.join(symptoms)}")
-    
     if diagnosis:
-        # Try to extract diagnosis name if it's JSON
         try:
             if "---REPORT_DATA---" in diagnosis:
                 parts = diagnosis.split("---REPORT_DATA---")
-                diagnosis_json = parts[-1] if len(parts) > 1 else diagnosis
-                diag_obj = json.loads(diagnosis_json)
+                diag_obj = json.loads(parts[-1])
                 diag_name = diag_obj.get("diagnosis", {}).get("name", diagnosis)
                 context_parts.append(f"Diagnosis: {diag_name}")
-                
-                # Add dietary info from diagnosis
                 dietary = diag_obj.get("dietaryGuide", {})
                 if dietary.get("toConsume"):
                     context_parts.append(f"Recommended foods: {', '.join(dietary['toConsume'][:5])}")
@@ -148,51 +445,46 @@ async def recipes(user_id: str = "default_user", data: dict = Body(...)):
                     context_parts.append(f"Foods to avoid: {', '.join(dietary['toAvoid'][:5])}")
             else:
                 context_parts.append(f"Diagnosis: {diagnosis[:200]}")
-        except:
+        except Exception:
             context_parts.append(f"Diagnosis: {diagnosis[:200]}")
-    
     if patient_info:
         context_parts.append(f"Patient info: {patient_info}")
-    
+
     context = "\n".join(context_parts)
-    
-    # Use Gemini to generate recipes
-    from gemini_client import send
-    
     prompt = (
-        f"You are an Ayurvedic culinary expert. Generate personalized recipes based on the following information:\n\n"
+        f"You are an Ayurvedic culinary expert. Generate personalized recipes based on:\n\n"
         f"{context}\n\n"
-        "Generate 3-4 detailed recipes in the following format. Each recipe should include:\n"
-        "- Name of the dish/recipe\n"
-        "- Benefits (how it helps balance the doshas/condition)\n"
-        "- Ingredients (List each ingredient with its exact quantity clearly mentioned. Do not use numeric fractions like 1/2 or 1/4; instead, write them out as words like 'half', 'quarter', 'one fourth', 'three quarters', etc.)\n"
-        "- Preparation steps (Provide a maximum of 5 simple, clear, numbered steps for each recipe. Keep instructions concise.)\n"
-        "- When to consume (morning/evening/before meal/after meal)\n"
-        "- Any precautions\n\n"
-        "Format the output with '---RECIPE---' separator between recipes.\n"
-        "Use simple, clear language that anyone can follow.\n"
-        "Include traditional Ayurvedic recipes when appropriate."
+        "Generate 3-4 detailed recipes. Each should include:\n"
+        "- Name, Benefits, Ingredients (with quantities as words, e.g. 'half'), "
+        "Preparation steps (max 3), When to consume, Precautions.\n"
+        "Separate with '---RECIPE---'.\nUse simple, clear language."
     )
-    
     try:
         recipes_text = send(prompt)
+        
+        if user_id and len(user_id) == 24:
+            try:
+                await db.chat_sessions.update_one(
+                    {"_id": ObjectId(user_id)},
+                    {"$set": {"recipesText": recipes_text, "updatedAt": utcnow()}}
+                )
+            except Exception:
+                pass
+                
         return {"recipes": recipes_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate recipes: {str(e)}")
 
+
+# ─── Reset session ─────────────────────────────────────────────────────────────
+
 @app.post("/reset")
 async def reset(user_id: str):
-    if user_id in sessions:
-        del sessions[user_id]
+    ai_sessions.pop(user_id, None)
     return {"status": "reset"}
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:19006", "http://localhost:19000", "http://localhost:8081", "*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+# ─── Health / symptoms ─────────────────────────────────────────────────────────
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'frontend_data')
 SYMPTOM_FILE = os.path.join(DATA_DIR, 'symptoms.json')
@@ -217,11 +509,28 @@ def get_symptoms():
 
 @app.get('/symptoms/{symptom_id}')
 def get_symptom(symptom_id: str):
-    data = load_symptoms()
-    for s in data:
+    for s in load_symptoms():
         if str(s.get('id')) == str(symptom_id):
             return s
     raise HTTPException(status_code=404, detail='Symptom not found')
+
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _extract_title(diagnosis_text: str) -> str:
+    if not diagnosis_text:
+        return "New consultation"
+    try:
+        raw = diagnosis_text.split("---REPORT_DATA---")[-1] if "---REPORT_DATA---" in diagnosis_text else diagnosis_text
+        cleaned = raw.replace("```json", "").replace("```", "").strip()
+        start, end = cleaned.index("{"), cleaned.rindex("}")
+        report = json.loads(cleaned[start:end + 1])
+        name = report.get("diagnosis", {}).get("name", "")
+        if name:
+            return name.split("(")[0].replace("*", "").strip()
+    except Exception:
+        pass
+    return "New consultation"
 
 
 if __name__ == '__main__':

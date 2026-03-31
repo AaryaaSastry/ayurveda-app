@@ -1,853 +1,494 @@
-import React, { useEffect, useRef, useState } from 'react'
-import './report.css'
-import ReportRenderer from './ReportRenderer'
-import RecipesView from './pages/RecipesView'
-import { sanitizeMarkdownText } from './utils/textUtils'
-import { downloadMedicalReportPDF } from './utils/pdfExport'
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
+import {
+  Send,
+  Plus,
+  User,
+  Bot,
+  Download,
+  ChevronRight,
+  MessageSquare,
+  CheckCircle2,
+  Stethoscope,
+  Heart,
+  Calendar,
+  Zap,
+  MoreVertical,
+  Loader2,
+  Activity,
+  X,
+  Sparkles,
+  ShieldCheck
+} from 'lucide-react';
+import './report.css';
+import ReportRenderer from './ReportRenderer';
+import RecipesView from './pages/RecipesView';
+import { sanitizeMarkdownText } from './utils/textUtils';
+import { downloadMedicalReportPDF } from './utils/pdfExport';
+import { chatApi } from './services/api';
+const Chat = () => {
+  const { sessionId: routeSessionId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sessions, setSessions] = useState([]);
+  const [activeSessionId, setActiveSessionId] = useState(routeSessionId);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
+  const [activeSidePanel, setActiveSidePanel] = useState(null);
+  const [panelWidth, setPanelWidth] = useState(480);
+  const [diagnosisCompleted, setDiagnosisCompleted] = useState(false);
+  const [diseaseName, setDiseaseName] = useState("");
 
-const API_BASE = 'http://localhost:8000'
-const SESSIONS_STORAGE_KEY = 'ayurveda-chat-sessions'
-const ACTIVE_SESSION_STORAGE_KEY = 'ayurveda-chat-active-session'
-const DOCTORS_FALLBACK_URL = 'https://www.google.com/maps/search/ayurvedic+doctors+near+me'
-const SIDEBAR_WIDTH_STORAGE_KEY = 'ayurveda-chat-sidebar-width'
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
 
-const SendIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13"></line>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-  </svg>
-)
+  const startResizingPanel = useCallback((e) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = panelWidth;
 
-const SidebarIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="4" width="18" height="16" rx="2"></rect>
-    <path d="M9 4v16"></path>
-  </svg>
-)
+    const onMouseMove = (moveEvent) => {
+      const newWidth = startWidth - (moveEvent.clientX - startX);
+      if (newWidth >= 360 && newWidth <= 800) setPanelWidth(newWidth);
+    };
 
-const DownloadIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-    <polyline points="7 10 12 15 17 10"></polyline>
-    <line x1="12" y1="15" x2="12" y2="3"></line>
-  </svg>
-)
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = 'default';
+    };
 
-const PlanIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-    <polyline points="14 2 14 8 20 8"></polyline>
-    <line x1="16" y1="13" x2="8" y2="13"></line>
-    <line x1="16" y1="17" x2="8" y2="17"></line>
-    <polyline points="10 9 9 9 8 9"></polyline>
-  </svg>
-)
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+    document.body.style.cursor = 'col-resize';
+  }, [panelWidth]);
 
-const UserIcon = () => (
-  <div className="msg-icon msg-icon-user">
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08s5.97 1.09 6 3.08c-1.29 1.94-3.5 3.22-6 3.22z" />
-    </svg>
-  </div>
-)
+  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+  const userId = userData.id || userData._id;
+  const activeSession = sessions.find(s => s._id === (activeSessionId || routeSessionId));
 
-const BotIcon = () => (
-  <div className="msg-icon msg-icon-bot">
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M19 8h-1V7a5 5 0 0 0-10 0v1H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2zM8 7a3 3 0 0 1 6 0v1H8V7zm9 12H7v-9h10v9zm-8-6h2v2H9v-2zm4 0h2v2h-2v-2z" />
-    </svg>
-  </div>
-)
-
-const PlusIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="5" x2="12" y2="19"></line>
-    <line x1="5" y1="12" x2="19" y2="12"></line>
-  </svg>
-)
-
-function createSession(title = 'New consultation') {
-  const now = new Date().toISOString()
-  return {
-    id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    title,
-    createdAt: now,
-    updatedAt: now,
-    messages: [],
-    facts: [],
-    diagnosis: '',
-    recipesText: '',
-    showPostReportOptions: false
-  }
-}
-
-function loadSessions() {
-  if (typeof window === 'undefined') return [createSession()]
-
-  try {
-    const raw = window.localStorage.getItem(SESSIONS_STORAGE_KEY)
-    if (!raw) return [createSession()]
-
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return [createSession()]
-
-    return parsed.map(session => ({
-      ...createSession(),
-      ...session,
-      messages: Array.isArray(session.messages) ? session.messages : [],
-      facts: Array.isArray(session.facts) ? session.facts : []
-    }))
-  } catch (_error) {
-    return [createSession()]
-  }
-}
-
-function loadActiveSessionId() {
-  if (typeof window === 'undefined') return null
-  return window.localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)
-}
-
-function loadSidebarWidth() {
-  if (typeof window === 'undefined') return 280
-  const raw = Number(window.localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY))
-  if (!raw || Number.isNaN(raw)) return 280
-  return Math.min(600, Math.max(260, raw))
-}
-
-function parseReportOnly(diagnosisText) {
-  if (!diagnosisText) return null
-  try {
-    const reportJson = diagnosisText.includes('---REPORT_DATA---')
-      ? diagnosisText.split('---REPORT_DATA---').filter(Boolean).pop()
-      : diagnosisText
-    const cleanedJson = reportJson?.replace(/```json/g, '').replace(/```/g, '').trim() || ''
-    const start = cleanedJson.indexOf('{')
-    const end = cleanedJson.lastIndexOf('}')
-    if (start !== -1 && end !== -1) {
-      return JSON.parse(cleanedJson.substring(start, end + 1))
+  useEffect(() => {
+    if (activeSession?.diagnosis) {
+      setDiagnosisCompleted(true);
+      setDiseaseName(activeSession?.title || "Wellness Plan");
+    } else {
+      setDiagnosisCompleted(false);
+      setDiseaseName("");
     }
-  } catch (_e) { }
-  return null
-}
+  }, [activeSession?.diagnosis, activeSession?.title]);
 
-function createSessionTitleFromDiagnosis(diagnosisText) {
-  if (!diagnosisText) return 'New consultation'
-
-  try {
-    const reportJson = diagnosisText.includes('---REPORT_DATA---')
-      ? diagnosisText.split('---REPORT_DATA---').filter(Boolean).pop()
-      : diagnosisText
-    const cleanedJson = reportJson?.replace(/```json/g, '').replace(/```/g, '').trim() || ''
-    const start = cleanedJson.indexOf('{')
-    const end = cleanedJson.lastIndexOf('}')
-
-    if (start !== -1 && end !== -1) {
-      const report = JSON.parse(cleanedJson.substring(start, end + 1))
-      const rawName = report?.diagnosis?.name
-      if (rawName) {
-        // Strip out anything in parentheses for a cleaner "Major Diagnosis" display
-        return rawName.split('(')[0].replace(/\*/g, '').replace(/\s+/g, ' ').trim()
-      }
+  // Sync activeSessionId with route
+  useEffect(() => {
+    if (routeSessionId && routeSessionId !== activeSessionId) {
+      setActiveSessionId(routeSessionId);
     }
-  } catch (_error) {
-    // Fall back to the default title when report parsing fails.
-  }
+  }, [routeSessionId]);
 
-  return 'New consultation'
-}
-
-// Re-export for backward compatibility
-export { sanitizeMarkdownText } from './utils/textUtils'
-
-function formatTitleForDisplay(title) {
-  if (!title || title === 'New consultation') return title || 'New consultation'
-  // Remove markdown symbols and anything in parentheses
-  return title.split('(')[0].replace(/\*/g, '').replace(/\s+/g, ' ').trim()
-}
-
-function getSessionPreview(session) {
-  const lastMessage = [...session.messages].reverse().find(message => !message.isThinking)
-  if (!lastMessage?.text) return 'No messages yet'
-  const normalized = sanitizeMarkdownText(lastMessage.text)
-  return normalized.length > 54 ? `${normalized.slice(0, 54)}...` : normalized
-}
-
-function formatSessionTime(timestamp) {
-  if (!timestamp) return ''
-
-  const date = new Date(timestamp)
-  if (Number.isNaN(date.getTime())) return ''
-
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric'
-  })
-}
-
-function openExternal(url) {
-  const nextWindow = window.open(url, '_blank', 'noopener,noreferrer')
-  if (nextWindow) {
-    nextWindow.opener = null
-  }
-}
-
-function DoctorsPanel({ diagnosisText }) {
-  return (
-    <>
-      <div className="side-panel-note">
-        <h3>Find Ayurvedic doctors</h3>
-        <p>
-          Open a nearby search in Google Maps while keeping the consultation visible beside it.
-        </p>
-      </div>
-
-      {diagnosisText && (
-        <div className="side-panel-diagnosis">
-          <span>Current diagnosis</span>
-          <p>{createSessionTitleFromDiagnosis(diagnosisText)}</p>
-        </div>
-      )}
-
-      <button type="button" className="side-panel-cta" onClick={() => openExternal(DOCTORS_FALLBACK_URL)}>
-        Open Google Maps
-      </button>
-    </>
-  )
-}
-
-function MessageActions({
-  showPostReportOptions,
-  recipesExisting,
-  onAskAboutReport,
-  onRecipes,
-  onFindDoctors
-}) {
-  if (!showPostReportOptions) return null
-
-  return (
-    <div className="msg-actions">
-      <div className="button-options post-report-options">
-        <button type="button" className="action-btn-large" onClick={onAskAboutReport}>Ask about report</button>
-        {!recipesExisting && <button type="button" className="action-btn-large" onClick={onRecipes}>Get recipes</button>}
-        <button type="button" className="action-btn-large" onClick={onFindDoctors}>Find doctors</button>
-      </div>
-    </div>
-  )
-}
-
-function MessageBubble({
-  message,
-  isLastMessage,
-  showPostReportOptions,
-  recipesExisting,
-  onAskAboutReport,
-  onRecipes,
-  onFindDoctors
-}) {
-  return (
-    <div className={`msg msg-${message.role}`}>
-      <div className="msg-content">
-        {message.isThinking ? (
-          <div className="msg-body msg-bot">
-            <div className="typing-indicator">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        ) : message.role === 'report' ? (
-          <div className="msg-body">
-            <ReportRenderer content={message.text} />
-          </div>
-        ) : (
-          <div className="msg-icon-wrapper">
-            {message.role === 'user' ? <UserIcon /> : <BotIcon />}
-            <div className="msg-body">{sanitizeMarkdownText(message.text)}</div>
-          </div>
-        )}
-
-        {isLastMessage && (
-          <MessageActions
-            showPostReportOptions={showPostReportOptions}
-            recipesExisting={recipesExisting}
-            onAskAboutReport={onAskAboutReport}
-            onRecipes={onRecipes}
-            onFindDoctors={onFindDoctors}
-          />
-        )}
-      </div>
-    </div>
-  )
-}
-
-const PANEL_WIDTH_STORAGE_KEY = 'ayurveda_assistant_panel_width'
-
-function loadPanelWidth() {
-  if (typeof window === 'undefined') return 420
-  const raw = Number(window.localStorage.getItem(PANEL_WIDTH_STORAGE_KEY))
-  if (!raw || Number.isNaN(raw)) return 420
-  return Math.min(800, Math.max(320, raw))
-}
-
-export default function Chat() {
-  const [sessions, setSessions] = useState(() => loadSessions())
-  const [activeSessionId, setActiveSessionId] = useState(() => loadActiveSessionId())
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [connectionError, setConnectionError] = useState(null)
-  const [activeSidePanel, setActiveSidePanel] = useState(null)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [sidebarWidth, setSidebarWidth] = useState(() => loadSidebarWidth())
-  const [panelWidth, setPanelWidth] = useState(() => loadPanelWidth())
-  const messagesEndRef = useRef(null)
-  const inputRef = useRef(null)
-  const openingRequestsRef = useRef(new Set())
-  const isResizingSidebarRef = useRef(false)
-  const isResizingPanelRef = useRef(false)
-
-  const activeSession = sessions.find(session => session.id === activeSessionId) || sessions[0] || null
-
+  // Load basic session list
   useEffect(() => {
-    if (!activeSession && sessions.length === 0) {
-      const firstSession = createSession()
-      setSessions([firstSession])
-      setActiveSessionId(firstSession.id)
-      return
-    }
-
-    if (activeSessionId && sessions.some(session => session.id === activeSessionId)) return
-
-    if (sessions[0]) {
-      setActiveSessionId(sessions[0].id)
-    }
-  }, [activeSession, activeSessionId, sessions])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions))
-  }, [sessions])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(sidebarWidth))
-  }, [sidebarWidth])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    window.localStorage.setItem(PANEL_WIDTH_STORAGE_KEY, String(panelWidth))
-  }, [panelWidth])
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !activeSessionId) return
-    window.localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, activeSessionId)
-  }, [activeSessionId])
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [activeSession?.messages])
-
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [activeSessionId])
-
-  useEffect(() => {
-    if (!inputRef.current) return
-    inputRef.current.style.height = 'auto'
-    inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 180)}px`
-  }, [input])
-
-  useEffect(() => {
-    if (!activeSession) return
-    if (activeSession.messages.length > 0) return
-    if (openingRequestsRef.current.has(activeSession.id)) return
-
-    openingRequestsRef.current.add(activeSession.id)
-
-    async function fetchOpening(sessionId) {
+    if (!userId) return;
+    const loadSessions = async () => {
       try {
-        const res = await fetch(buildApiUrl('/ask', sessionId), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: 'START_CONVERSATION' })
-        })
-        if (!res.ok) throw new Error(`Server error: ${res.status}`)
+        const res = await chatApi.getSessions(userId);
+        setSessions(prev => {
+          // Merge to avoid overwriting a session that just loaded its messages
+          const merged = res.data.map(summary => {
+            const existing = prev.find(p => p._id === summary._id);
+            if (existing?.messagesLoaded) {
+              return { ...summary, messages: existing.messages, messagesLoaded: true, diagnosis: existing.diagnosis || summary.diagnosis };
+            }
+            return summary;
+          });
+          return merged;
+        });
 
-        const data = await res.json()
-        const botText = data.content || data.question || 'Namaste! I am your Ayurvedic AI assistant.'
-        const nextMessages = botText.includes('---NEXT_BUBBLE---')
-          ? botText.split('---NEXT_BUBBLE---').filter(Boolean).map(text => ({ role: 'bot', text: text.trim() }))
-          : [{ role: 'bot', text: botText }]
-
-        updateSessionById(sessionId, session => ({
-          ...session,
-          messages: nextMessages
-        }))
-
-        if (sessionId === activeSessionId) {
-          setConnectionError(null)
+        if (!routeSessionId && res.data.length > 0) {
+          navigate(`/chat/${res.data[0]._id}`, { replace: true });
+        } else if (!routeSessionId && res.data.length === 0) {
+          handleNewSession();
         }
-      } catch (_error) {
-        openingRequestsRef.current.delete(sessionId)
-        if (sessionId === activeSessionId) {
-          setConnectionError('Unable to reach the assistant service right now.')
-        }
-      }
-    }
+      } catch (_err) { }
+    };
+    loadSessions();
+  }, [userId]);
 
-    fetchOpening(activeSession.id)
-  }, [activeSession, activeSessionId])
+  // Load detailed messages
+  useEffect(() => {
+    const sid = routeSessionId;
+    if (!sid) return;
+
+    const sess = sessions.find(s => s._id === sid);
+    if (sess?.messagesLoaded) return;
+
+    const loadFull = async () => {
+      setIsMessagesLoading(true);
+      try {
+        const res = await chatApi.getSession(sid);
+        setSessions(prev => {
+          const index = prev.findIndex(s => s._id === sid);
+          if (index !== -1) {
+            const next = [...prev];
+            next[index] = { ...res.data, messagesLoaded: true };
+            return next;
+          } else {
+            return [{ ...res.data, messagesLoaded: true }, ...prev];
+          }
+        });
+      } catch (_err) { }
+      finally { setIsMessagesLoading(false); }
+    };
+    loadFull();
+  }, [routeSessionId, sessions.length]);
 
   useEffect(() => {
-    function handlePointerMove(event) {
-      if (isResizingSidebarRef.current) {
-        setSidebarWidth(Math.min(600, Math.max(260, event.clientX - 24)))
-      } else if (isResizingPanelRef.current) {
-        const newWidth = window.innerWidth - event.clientX
-        setPanelWidth(Math.min(800, Math.max(320, newWidth)))
-      }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeSession?.messages, isLoading, isMessagesLoading]);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 160)}px`;
     }
+  }, [input]);
 
-    function handlePointerUp() {
-      isResizingSidebarRef.current = false
-      isResizingPanelRef.current = false
-      document.body.classList.remove('sidebar-resizing')
-      document.body.classList.remove('panel-resizing')
+  const handleNewSession = async () => {
+    if (!userId || isLoading) return;
+    setIsLoading(true);
+    try {
+      const res = await chatApi.createSession(userId);
+      const newSess = res.data;
+      setSessions(prev => [newSess, ...prev]);
+      navigate(`/chat/${newSess._id}`, { replace: true, state: {} });
+      window.dispatchEvent(new CustomEvent('refresh-sessions'));
+    } catch (_err) { }
+    finally { setIsLoading(false); }
+  };
+
+  useEffect(() => {
+    if (location.state?.forceNew) {
+      handleNewSession();
+      // Clear the state so we don't recreate on re-renders
+      navigate(location.pathname, { replace: true, state: {} });
     }
+  }, [location.state, navigate]);
 
-    window.addEventListener('mousemove', handlePointerMove)
-    window.addEventListener('mouseup', handlePointerUp)
+  useEffect(() => {
+    const onNewSession = () => handleNewSession();
+    window.addEventListener('new-session-requested', onNewSession);
+    return () => window.removeEventListener('new-session-requested', onNewSession);
+  }, [userId, isLoading]);
 
-    return () => {
-      window.removeEventListener('mousemove', handlePointerMove)
-      window.removeEventListener('mouseup', handlePointerUp)
-    }
-  }, [])
+  const handleSend = async () => {
+    if (!input.trim() || isLoading || !activeSession) return;
+    const sessId = activeSession._id;
+    const userText = input.trim();
+    setInput('');
+    setIsLoading(true);
 
-  function updateSessionById(sessionId, updater) {
-    setSessions(prevSessions => {
-      const nextSessions = prevSessions.map(session => {
-        if (session.id !== sessionId) return session
-        const updated = updater(session)
-        return {
-          ...updated,
-          updatedAt: new Date().toISOString()
-        }
-      })
-
-      nextSessions.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-      return nextSessions
-    })
-  }
-
-  function buildApiUrl(path, sessionId) {
-    return `${API_BASE}${path}?user_id=${encodeURIComponent(sessionId)}`
-  }
-
-  async function postAsk(sessionId, dataPayload) {
-    const res = await fetch(buildApiUrl('/ask', sessionId), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(dataPayload)
-    })
-    if (!res.ok) {
-      throw new Error(`Server error: ${res.status}`)
-    }
-    return res.json()
-  }
-
-  async function postRecipes(sessionId, diagnosisText) {
-    const res = await fetch(buildApiUrl('/recipes', sessionId), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diagnosis: diagnosisText })
-    })
-    if (!res.ok) {
-      throw new Error(`Server error: ${res.status}`)
-    }
-    const data = await res.json()
-    return data.recipes
-  }
-
-  async function handleSend() {
-    if (!input.trim() || isLoading || !activeSession) return
-
-    const sessionId = activeSession.id
-    const userText = input.trim()
-    setInput('')
-    setIsLoading(true)
-    setConnectionError(null)
-
-    updateSessionById(sessionId, session => ({
-      ...session,
-      showPostReportOptions: false,
-      messages: [...session.messages, { role: 'user', text: userText }, { role: 'bot', text: '', isThinking: true }]
-    }))
+    setSessions(prev => prev.map(s => s._id === sessId ? {
+      ...s,
+      messages: [...(s.messages || []), { role: 'user', text: userText }, { role: 'bot', text: '', isThinking: true }]
+    } : s));
 
     try {
-      const resp = await postAsk(sessionId, {
-        message: userText,
-        diagnosis: activeSession.diagnosis || ''
-      })
+      const res = await chatApi.ask(sessId, userText, activeSession.diagnosis || '');
+      const data = res.data;
 
-      if (resp.type === 'diagnosis') {
-        updateSessionById(sessionId, session => ({
-          ...session,
-          title: createSessionTitleFromDiagnosis(resp.content),
-          diagnosis: resp.content,
-          showPostReportOptions: false,
-          messages: session.messages.slice(0, -1).concat({ role: 'report', text: resp.content })
-        }))
-
-        window.setTimeout(() => {
-          updateSessionById(sessionId, session => ({
-            ...session,
-            showPostReportOptions: true,
-            messages: [...session.messages, { role: 'bot', text: 'What would you like to do next?' }]
-          }))
-        }, 1000)
+      if (data.type === 'diagnosis') {
+        setSessions(prev => prev.map(s => s._id === sessId ? {
+          ...s,
+          diagnosis: data.content,
+          messages: s.messages.slice(0, -1).concat({ role: 'report', text: data.content })
+        } : s));
+        setTimeout(() => {
+          setSessions(prev => prev.map(s => s._id === sessId ? {
+            ...s,
+            messages: [...s.messages, { role: 'bot', text: 'Diagnostic analysis complete. I have generated a personalized wellness plan for you based on your results. You can download the full report or view your strategy above.' }]
+          } : s));
+        }, 1000);
       } else {
-        const botText = resp.content || resp.question || 'Error: invalid response from server.'
+        const botText = data.content || data.question;
+        const bubbles = botText.includes('---NEXT_BUBBLE---')
+          ? botText.split('---NEXT_BUBBLE---').filter(Boolean).map(t => ({ role: 'bot', text: t.trim() }))
+          : [{ role: 'bot', text: botText }];
 
-        updateSessionById(sessionId, session => ({
-          ...session,
-          showPostReportOptions: Boolean(session.diagnosis),
-          messages: botText.includes('---NEXT_BUBBLE---')
-            ? sessionMessagesWithoutThinking(session.messages).concat(
-              botText.split('---NEXT_BUBBLE---').filter(b => b.trim()).map(text => ({ role: 'bot', text: text.trim() }))
-            )
-            : session.messages.slice(0, -1).concat({ role: 'bot', text: botText })
-        }))
+        setSessions(prev => prev.map(s => s._id === sessId ? {
+          ...s,
+          messages: s.messages.slice(0, -1).concat(bubbles)
+        } : s));
       }
-    } catch (_error) {
-      if (sessionId === activeSessionId) {
-        setConnectionError('Unable to reach the assistant service right now.')
-      }
+    } catch (_err) { }
+    finally { setIsLoading(false); }
+  };
 
-      updateSessionById(sessionId, session => ({
-        ...session,
-        messages: session.messages.slice(0, -1).concat({
-          role: 'bot',
-          text: 'Error: Could not connect to server. Please check if the backend is running.'
-        })
-      }))
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    const handleGlobalShowPlan = () => setActiveSidePanel('recipes');
+    window.addEventListener('show-wellness-plan', handleGlobalShowPlan);
+    return () => window.removeEventListener('show-wellness-plan', handleGlobalShowPlan);
+  }, []);
+
+  useEffect(() => {
+    if (activeSession?.diagnosis) {
+      const info = extractReportJson(activeSession.diagnosis);
+      if (info) {
+        localStorage.setItem('active_report', JSON.stringify({ ...info, hasPlan: !!activeSession.recipesText }));
+        window.dispatchEvent(new CustomEvent('diagnosis-updated'));
+      }
+    } else {
+      localStorage.removeItem('active_report');
+      window.dispatchEvent(new CustomEvent('diagnosis-updated'));
     }
-  }
+  }, [activeSession?.diagnosis, activeSession?.recipesText]);
 
-  async function handleRecipes() {
-    if (!activeSession || !activeSession.diagnosis || isLoading) return
-
-    const sessionId = activeSession.id
-    setIsLoading(true)
-    setSidebarOpen(false)
-    setActiveSidePanel('recipes')
-
-    updateSessionById(sessionId, session => ({
-      ...session,
-      showPostReportOptions: false,
-      messages: [...session.messages, { role: 'bot', text: '', isThinking: true }]
-    }))
-
+  const handleRecipes = async () => {
+    if (isLoading || !activeSession?.diagnosis) return;
+    if (activeSession.recipesText) {
+      setActiveSidePanel('recipes');
+      return;
+    }
+    setIsLoading(true);
+    setActiveSidePanel('recipes');
     try {
-      const recipes = await postRecipes(sessionId, activeSession.diagnosis)
-      updateSessionById(sessionId, session => ({
-        ...session,
-        recipesText: recipes,
-        showPostReportOptions: true,
-        messages: session.messages.slice(0, -1)
-      }))
-    } catch (_error) {
-      updateSessionById(sessionId, session => ({
-        ...session,
-        showPostReportOptions: Boolean(session.diagnosis),
-        messages: session.messages.slice(0, -1).concat({ role: 'bot', text: 'Error: failed to get recipes.' })
-      }))
-      setActiveSidePanel(null)
-    } finally {
-      setIsLoading(false)
+      const res = await chatApi.getRecipes(activeSession._id, activeSession.diagnosis);
+      setSessions(prev => prev.map(s => s._id === activeSession._id ? { ...s, recipesText: res.data.recipes } : s));
+    } catch (_err) { }
+    finally { setIsLoading(false); }
+  };
+
+  const extractReportJson = (text) => {
+    if (!text) return null;
+    try {
+      if (typeof text === 'object') return text;
+      const raw = text.includes('---REPORT_DATA---') ? text.split('---REPORT_DATA---').pop() : text;
+      const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      console.error('Failed to parse report JSON:', err);
+      return null;
     }
-  }
-
-  function handleFindDoctors() {
-    if (!activeSession?.diagnosis) return
-
-    updateSessionById(activeSession.id, session => ({
-      ...session,
-      showPostReportOptions: true
-    }))
-    setSidebarOpen(false)
-    setActiveSidePanel('doctors')
-  }
-
-  function handleAskAboutReport() {
-    if (!activeSession) return
-
-    updateSessionById(activeSession.id, session => ({
-      ...session,
-      showPostReportOptions: false,
-      messages: [
-        ...session.messages,
-        {
-          role: 'bot',
-          text: 'Ask me anything about the report, and I can also help with recipes or finding a doctor afterward.'
-        }
-      ]
-    }))
-  }
-
-  function handleNewSession() {
-    const nextSession = createSession()
-    setSessions(prev => [nextSession, ...prev])
-    setActiveSessionId(nextSession.id)
-    setInput('')
-    setIsLoading(false)
-    setConnectionError(null)
-    setActiveSidePanel(null)
-  }
-
-  function handleSelectSession(sessionId) {
-    setActiveSessionId(sessionId)
-    setInput('')
-    setConnectionError(null)
-    setActiveSidePanel(null)
-  }
-
-  function handleDeleteSession(sessionId) {
-    const remaining = sessions.filter(session => session.id !== sessionId)
-    const nextSessions = remaining.length > 0 ? remaining : [createSession()]
-
-    setSessions(nextSessions)
-
-    if (activeSessionId === sessionId) {
-      setActiveSessionId(nextSessions[0]?.id || null)
-      setActiveSidePanel(null)
-      setConnectionError(null)
-    }
-  }
-
-  function startSidebarResize() {
-    isResizingSidebarRef.current = true
-    document.body.classList.add('sidebar-resizing')
-  }
-
-  function startPanelResize() {
-    isResizingPanelRef.current = true
-    document.body.classList.add('panel-resizing')
-  }
-
-  const placeholder = activeSession?.messages?.some(message => message.role === 'bot' && /\?$/.test(message.text?.trim() || ''))
-    ? 'Type your answer...'
-    : 'Message Ayurveda Clinical Assistant'
+  };
 
   return (
-    <div
-      className={`chat-layout${sidebarOpen ? ' sidebar-open' : ' sidebar-closed'}${activeSidePanel ? ' panel-open' : ''}`}
-      style={{
-        '--sidebar-width': `${sidebarWidth}px`,
-        '--panel-width': `${panelWidth}px`
-      }}
-    >
-      <aside className={`session-sidebar${sidebarOpen ? '' : ' hidden'}`}>
-        <div className="sidebar-header sidebar-header-chatgpt">
-          <button type="button" className="new-session-button new-session-button-chatgpt" onClick={handleNewSession}>
-            <PlusIcon />
-            <span>New chat</span>
-          </button>
-        </div>
+    <div className="flex h-full w-full bg-[#fdfdfd] relative overflow-hidden font-sans">
+      <div className="flex-1 flex flex-col h-full relative">
+        
+        {/* Top Bar (Section A) */}
+        <div className="w-full h-[60px] md:h-[70px] bg-white border-b border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-10 transition-all duration-300 relative overflow-hidden">
+           
+           <div className="absolute inset-0 flex items-center justify-center pointer-events-none px-[90px] md:px-[220px]">
+             <h1 className="text-gray-800 font-semibold text-[15px] md:text-xl text-center truncate w-full pointer-events-auto">
+               {!diagnosisCompleted ? "New Consultation" : diseaseName}
+             </h1>
+           </div>
 
-        <div className="session-list">
-          {sessions.map(session => (
-            <div
-              key={session.id}
-              className={`session-card${session.id === activeSession?.id ? ' active' : ''}`}
-            >
-              <div className="session-card-main">
+           <div className="flex-1 pointer-events-none"></div>
+
+           <div className="flex-shrink-0 flex justify-end gap-2 md:gap-3 z-20 relative">
+             {diagnosisCompleted && (
                 <button
-                  type="button"
-                  className="session-select"
-                  onClick={() => handleSelectSession(session.id)}
-                  aria-current={session.id === activeSession?.id ? 'page' : undefined}
+                  onClick={() => {
+                    const reportData = extractReportJson(activeSession?.diagnosis);
+                    if (reportData) downloadMedicalReportPDF(reportData);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-gray-200 text-black rounded-[12px] text-[10px] font-black uppercase tracking-[1px] shadow-sm hover:border-black active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
+                  title="Download Report"
                 >
-                  <span className="session-card-title">{formatTitleForDisplay(session.title)}</span>
-                  <span className="session-card-preview">{getSessionPreview(session)}</span>
+                  <Download size={14} strokeWidth={2.5} />
+                  <span>Report</span>
                 </button>
-              </div>
-              <div className="session-card-meta">
-                <span>{formatSessionTime(session.updatedAt)}</span>
+             )}
+             {diagnosisCompleted && (
                 <button
-                  type="button"
-                  className="session-delete"
-                  onClick={() => handleDeleteSession(session.id)}
+                  onClick={handleRecipes}
+                  className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-gray-200 text-black rounded-[12px] text-[10px] font-black uppercase tracking-[1px] shadow-sm hover:border-black active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
+                  title="View Wellness Plan"
                 >
-                  Delete
+                  <Sparkles size={14} className="text-emerald-500" />
+                  <span>Plan</span>
                 </button>
+             )}
+           </div>
+        </div>
+
+        {/* Messages area */}
+        <div className={`flex-1 w-full overflow-y-auto scroll-smooth pb-[160px] custom-scrollbar ${activeSession?.diagnosis ? 'pt-8' : ''}`}>
+          <div className="max-w-[800px] mx-auto px-6 py-12 space-y-10">
+
+            {isMessagesLoading ? (
+              <div className="py-24 flex flex-col items-center justify-center space-y-6">
+                <div className="relative">
+                   <div className="w-8 h-8 border-2 border-gray-200 border-t-ayur-forest rounded-full animate-spin"></div>
+                   <Activity size={12} className="absolute inset-0 m-auto text-ayur-forest animate-pulse" />
+                </div>
+                <p className="text-[11px] font-normal text-gray-400 capitalize tracking-wide">Syncing clinical records...</p>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Collapse tab on right edge of sidebar */}
-        <button
-          type="button"
-          className="sidebar-collapse-tab"
-          onClick={() => setSidebarOpen(false)}
-          aria-label="Collapse sidebar"
-        >
-          &#8249;
-        </button>
-      </aside>
-
-      {/* Floating expand tab when sidebar is hidden */}
-      {!sidebarOpen && (
-        <button
-          type="button"
-          className="sidebar-expand-tab"
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Expand sidebar"
-        >
-          &#8250;
-        </button>
-      )}
-
-      {sidebarOpen && <div className="sidebar-resizer" onMouseDown={startSidebarResize} aria-hidden="true" />}
-
-      <div className="chat-main">
-        <div className="chat-topbar chat-topbar-chatgpt">
-          <div className="chat-topbar-left">
-            {/* Topbar toggle removed - sidebar has its own tabs */}
-          </div>
-          <div className="chat-topbar-copy">
-            <h2>{formatTitleForDisplay(activeSession?.title || 'New consultation')}</h2>
-          </div>
-          <div className="chat-topbar-actions">
-            {activeSession?.diagnosis && (
-              <button
-                type="button"
-                className="topbar-action-btn"
-                title="Download Medical Report (PDF)"
-                onClick={() => {
-                  const report = parseReportOnly(activeSession.diagnosis)
-                  if (report) {
-                    downloadMedicalReportPDF(report)
-                  } else {
-                    console.warn('Could not parse report data from diagnosis')
-                  }
-                }}
-              >
-                <DownloadIcon />
-                <span>Report</span>
-              </button>
+            ) : (!activeSession?.messages || activeSession.messages.length === 0) ? (
+              <div className="py-20 flex flex-col items-center text-center space-y-10 animate-fade-in">
+                <div className="relative">
+                   <div className="w-24 h-24 bg-white rounded-[32px] shadow-2xl border border-gray-100 flex items-center justify-center text-ayur-sage transform -rotate-3 transition-transform hover:rotate-0">
+                     <Activity size={48} />
+                   </div>
+                   <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
+                      <ShieldCheck size={16} className="text-white" />
+                   </div>
+                </div>
+                <div className="space-y-4 max-w-[500px]">
+                  <h2 className="text-5xl font-black text-black tracking-tighter leading-tight italic">
+                    How are you feeling <span className="text-ayur-sage">today?</span>
+                  </h2>
+                  <p className="text-black font-semibold text-lg opacity-80 leading-relaxed">
+                    Start a private consultation with our Ayurvedic AI. We analyze your symptoms through traditional principles and modern data.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4 w-full">
+                   {['Persistent Digestion Issues', 'Sleep Cycle Analysis', 'Seasonal Allergy Care', 'Energy & Stress Management'].map(tip => (
+                      <button 
+                        key={tip}
+                        onClick={() => { setInput(tip); inputRef.current?.focus(); }}
+                        className="px-6 py-4 bg-white border border-gray-100 rounded-[20px] text-[13px] font-bold text-ayur-forest hover:border-ayur-sage hover:bg-emerald-50/30 transition-all text-left shadow-sm group"
+                      >
+                         <span className="opacity-40 group-hover:opacity-100 transition-opacity mr-2">✦</span>
+                         {tip}
+                      </button>
+                   ))}
+                </div>
+              </div>
+            ) : (
+              activeSession?.messages?.map((msg, idx) => (
+                <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
+                  {msg.role === 'report' ? (
+                    (() => {
+                      const reportData = extractReportJson(msg.text);
+                      return (
+                        <div className="w-full relative py-8">
+                          {reportData ? (
+                            <div className="space-y-8">
+                              <ReportRenderer report={reportData} />
+                              <div className="flex flex-wrap justify-center gap-4">
+                                <button
+                                  onClick={() => downloadMedicalReportPDF(reportData)}
+                                  className="flex items-center gap-2.5 px-6 py-3.5 bg-white border-2 border-gray-200 text-black rounded-[14px] text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:border-black transition-all active:scale-95"
+                                >
+                                  <Download size={16} strokeWidth={3} />
+                                  <span>Download Report</span>
+                                </button>
+                                <button
+                                  onClick={handleRecipes}
+                                  className="flex items-center gap-2.5 px-6 py-3.5 bg-white border-2 border-gray-200 text-black rounded-[14px] text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:border-black transition-all active:scale-95"
+                                >
+                                  <Sparkles size={16} fill="currentColor" className="text-emerald-500" />
+                                  <span>View Wellness Plan</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-red-50 border border-red-100 rounded-[32px] p-10 text-center space-y-3">
+                              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 mx-auto">
+                                 <Activity size={24} />
+                              </div>
+                              <h4 className="text-red-900 font-bold uppercase text-xs tracking-widest">Analysis Failure</h4>
+                              <p className="text-red-600/60 text-sm font-medium">Internal engine could not synthesize the diagnostic data.</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
+                  ) : (
+                    <div className={`flex gap-6 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                      <div className={`w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center shadow-md border-2 transition-transform hover:scale-105 ${msg.role === 'user' ? 'bg-[#edf3f0] border-black text-black' : 'bg-white border-gray-200 text-ayur-sage'}`}>
+                        {msg.role === 'user' ? (
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
+                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                          </svg>
+                        ) : <Bot size={20} strokeWidth={2.5} />}
+                      </div>
+                      <div className={`flex flex-col gap-2.5 ${msg.role === 'user' ? 'items-end' : ''}`}>
+                        <div className={`rounded-[22px] text-[15px] leading-relaxed font-normal shadow-sm max-w-full overflow-hidden ${msg.role === 'user'
+                          ? 'bg-[#edf3f0] text-black border-2 border-transparent rounded-tr-none px-6 py-4.5'
+                          : msg.isThinking 
+                            ? 'bg-white border-2 border-gray-200 text-black rounded-tl-none px-5 py-4'
+                            : 'bg-white border-2 border-gray-200 text-black rounded-tl-none px-6 py-4.5'
+                          }`}>
+                          {msg.isThinking ? (
+                            <div className="flex gap-1.5 items-center justify-center">
+                               <span className="w-2 h-2 bg-gray-300 rounded-full animate-bounce"></span>
+                               <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                               <span className="w-2 h-2 bg-gray-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                            </div>
+                          ) : (
+                            <div className="prose prose-slate max-w-none text-black font-normal break-words" dangerouslySetInnerHTML={{ __html: sanitizeMarkdownText(msg.text) }} />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))
             )}
-            {activeSession?.recipesText && (
-              <button
-                type="button"
-                className="topbar-action-btn"
-                title="View Personalized Plan"
-                onClick={() => setActiveSidePanel('recipes')}
-              >
-                <PlanIcon />
-                <span>Plan</span>
-              </button>
-            )}
-            {activeSidePanel && (
-              <button type="button" className="panel-close" onClick={() => setActiveSidePanel(null)}>
-                Close
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="chat-surface chat-surface-chatgpt">
-          {connectionError && (
-            <div className="connection-error">
-              <strong>Connection issue</strong>
-              <span>{connectionError}</span>
-              <small>Backend endpoint: {API_BASE}</small>
-            </div>
-          )}
-
-          <div className="messages">
-            {activeSession?.messages.map((message, index) => (
-              <MessageBubble
-                key={`${activeSession.id}-${index}`}
-                message={message}
-                isLastMessage={index === activeSession.messages.length - 1}
-                showPostReportOptions={activeSession.showPostReportOptions}
-                recipesExisting={Boolean(activeSession.recipesText)}
-                onAskAboutReport={handleAskAboutReport}
-                onRecipes={handleRecipes}
-                onFindDoctors={handleFindDoctors}
-              />
-            ))}
             <div ref={messagesEndRef} />
           </div>
+        </div>
 
-          <div className="controls controls-chatgpt">
-            <div className="input-wrapper input-wrapper-chatgpt">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={event => setInput(event.target.value)}
-                onKeyDown={event => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault()
-                    handleSend()
-                  }
-                }}
-                placeholder={placeholder}
-                disabled={isLoading}
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                rows={1}
-                className="chat-input"
-                aria-label="Message input"
-              />
-              <button
-                type="button"
-                className="send-button send-button-chatgpt"
-                onClick={handleSend}
-                disabled={isLoading || !input.trim()}
-                title="Send Message"
-                aria-label="Send message"
-              >
-                <SendIcon />
-              </button>
+        {/* Input Area */}
+        <div className="absolute bottom-0 left-0 right-0 p-8 pt-0 z-40 bg-gradient-to-t from-white via-white/80 to-transparent pointer-events-none">
+          <div className="max-w-[800px] mx-auto pointer-events-auto mt-12 mb-4">
+            <div className="relative group">
+               <div className="absolute -inset-1 bg-gray-100 rounded-[34px] blur-sm opacity-0 group-focus-within:opacity-100 transition-opacity duration-300"></div>
+               <div className="relative bg-white border-2 border-gray-100 rounded-[32px] shadow-[0_15px_40px_rgba(0,0,0,0.05)] focus-within:border-ayur-forest/30 p-2 pr-4 flex items-center transition-all duration-300">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                  placeholder="Describe your symptoms in detail..."
+                  className="flex-1 bg-transparent border-none outline-none py-4 pl-6 pr-4 text-[16px] font-normal text-black placeholder:text-gray-300 resize-none min-h-[58px] max-h-[160px] custom-scrollbar selection:bg-ayur-sage/20"
+                  rows={1}
+                  disabled={isMessagesLoading}
+                />
+                <button
+                  onClick={handleSend}
+                  disabled={isLoading || !input.trim() || isMessagesLoading}
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 border-2 ${input.trim() ? 'bg-black border-black text-white shadow-xl scale-100' : 'bg-gray-50 text-gray-200 border-gray-100 scale-95 opacity-50 cursor-not-allowed'}`}
+                >
+                  {isLoading ? <Loader2 size={16} strokeWidth={2.5} className="animate-spin text-white" /> : <Send size={20} strokeWidth={2.5} />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Side Panel */}
       {activeSidePanel && (
-        <div className="panel-resizer" onMouseDown={startPanelResize} aria-hidden="true" />
-      )}
-
-      {activeSidePanel && (
-        <aside className="side-panel" style={{ width: 'var(--panel-width)' }}>
-          <div className="side-panel-header">
+        <div style={{ width: `${panelWidth}px` }} className="bg-white border-l border-gray-100 h-full animate-fade-in flex flex-col shadow-[0_0_100px_rgba(0,0,0,0.1)] relative z-50 flex-shrink-0 transition-none">
+          <div 
+            className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-ayur-sage/30 active:bg-ayur-sage/60 z-50 transition-colors"
+            onMouseDown={startResizingPanel}
+          ></div>
+          <div className="p-8 border-b border-gray-50 flex items-center justify-between bg-white relative">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-ayur-sage to-ayur-forest"></div>
             <div>
-              <p>{activeSidePanel === 'recipes' ? 'Recipes' : 'Doctors'}</p>
-              <h3>{activeSidePanel === 'recipes' ? 'Personalized plan' : 'Nearby care'}</h3>
+              <div className="flex items-center gap-2 mb-1">
+                 <Sparkles size={14} className="text-emerald-500" />
+                 <h4 className="text-[10px] font-black uppercase text-ayur-sage tracking-[3px]">Wellness Strategy</h4>
+              </div>
+              <h3 className="text-2xl font-black text-ayur-forest capitalize tracking-tight">{activeSidePanel} Detail</h3>
             </div>
-            <button type="button" className="panel-close panel-close-icon" onClick={() => setActiveSidePanel(null)}>
-              x
+            <button onClick={() => setActiveSidePanel(null)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-2xl transition-all active:scale-90">
+              <X size={24} />
             </button>
           </div>
-
-          <div className="side-panel-body">
-            {activeSidePanel === 'recipes' ? (
-              <RecipesView embedded recipes={activeSession?.recipesText || ''} />
-            ) : (
-              <DoctorsPanel diagnosisText={activeSession?.diagnosis} />
-            )}
+          <div className="flex-1 overflow-y-auto bg-gray-50/50">
+            <div className="p-2">
+               <RecipesView embedded recipes={activeSession?.recipesText || ''} />
+            </div>
           </div>
-        </aside>
+        </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-function sessionMessagesWithoutThinking(messages) {
-  return messages.filter(message => !message.isThinking)
-}
+export default Chat;

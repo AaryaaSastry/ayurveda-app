@@ -10,12 +10,12 @@ const SECTION_LABELS = {
 }
 
 const INLINE_SECTION_PATTERNS = [
-  { key: 'title', label: 'Name of the dish/recipe:' },
-  { key: 'benefits', label: 'Benefits:' },
-  { key: 'ingredients', label: 'Ingredients:' },
-  { key: 'preparation', label: 'Preparation steps:' },
-  { key: 'timing', label: 'When to consume:' },
-  { key: 'precautions', label: 'Precautions:' }
+  { key: 'title', regex: /(?:name of the dish(?:\/recipe)?|recipe name|dish name|name|title):/i },
+  { key: 'benefits', regex: /benefits?:/i },
+  { key: 'ingredients', regex: /ingredients?:/i },
+  { key: 'preparation', regex: /(?:preparation steps|preparation|steps):/i },
+  { key: 'timing', regex: /(?:when to consume|when to take|best time to consume|best time to take):/i },
+  { key: 'precautions', regex: /precautions?:/i }
 ]
 
 function normalizeLine(line) {
@@ -25,46 +25,56 @@ function normalizeLine(line) {
     .replace(/\*/g, '')
     .replace(/`/g, '')
     .replace(/\s*\/\s*/g, ' ')
-    .replace(/\s+-\s+/g, ', ')
-    .replace(/\s*\|\s*/g, ', ')
     .replace(/\s+/g, ' ')
     .trim()
 }
 
 function getSectionKey(line) {
-  const lowered = line.toLowerCase()
+  const lowered = line.toLowerCase().replace(/[*#]/g, '').trim()
 
   if (lowered.startsWith('benefits:') || lowered.startsWith('benefit:')) return 'benefits'
   if (lowered.startsWith('ingredients:') || lowered.startsWith('ingredient:')) return 'ingredients'
   if (lowered.startsWith('preparation steps:') || lowered.startsWith('preparation:') || lowered.startsWith('steps:')) return 'preparation'
-  if (lowered.startsWith('when to consume:') || lowered.startsWith('when to take:') || lowered.startsWith('best time to consume:')) return 'timing'
+  if (lowered.startsWith('when to consume:') || lowered.startsWith('when to take:') || lowered.startsWith('best time to consume:') || lowered.startsWith('best time to take:')) return 'timing'
   if (lowered.startsWith('precautions:') || lowered.startsWith('precaution:')) return 'precautions'
 
   return null
 }
 
 function toBulletItems(text) {
-  return text
-    .split(/[,\n]+/)
+  let list = text.split(/\n+/);
+  if (list.length === 1 && text.match(/[\-\*]\s+/)) {
+    list = text.split(/[\-\*]\s+/);
+  } else if (list.length === 1) {
+    list = text.split(/,(?=[A-Za-z])/);
+  }
+  
+  return list
     .map(item => normalizeLine(item))
     .filter(Boolean)
 }
 
 function toStepItems(text) {
-  const normalized = text
-    .replace(/\s*\/\s*/g, '. ')
-    .replace(/\s+\-\s+/g, '. ')
-    .replace(/\s+/g, ' ')
-    .replace(/\s+(?=[A-Z])/g, ' ')
-    .trim()
+  // Try to split on line breaks or explicitly numbered steps (e.g., "1.", "2.")
+  let list = text.split(/\n+/);
+  if (list.length === 1 && text.match(/\d+\.\s/)) {
+    // Single line with multiple numbered steps "1. xxx 2. yyy"
+    list = text.split(/(?=\d+\.\s)/);
+  } else if (list.length === 1) {
+    // Single sentence paragraph
+    list = text.split(/\.\s+(?=[A-Z])/);
+  }
 
-  return normalized
-    .split(/\.\s+/)
-    .map(step => normalizeLine(step.replace(/\.$/, '')))
-    .filter(Boolean)
+  return list
+    .map(step => {
+      // Clean up leading numbers/bullets and extra whitespace
+      return normalizeLine(step.replace(/^\d+[\.\)]\s*/, '').trim());
+    })
+    .filter(Boolean);
 }
 
 function parseInlineSections(block, index) {
+  const cleanBlock = block.replace(/[*#_`]/g, '');
   const recipe = {
     title: '',
     intro: [],
@@ -77,18 +87,26 @@ function parseInlineSections(block, index) {
 
   const matches = INLINE_SECTION_PATTERNS
     .map(section => {
-      const position = block.indexOf(section.label)
-      return position === -1 ? null : { ...section, position }
+      const match = cleanBlock.match(section.regex)
+      return match ? { ...section, position: match.index, length: match[0].length } : null
     })
     .filter(Boolean)
     .sort((a, b) => a.position - b.position)
 
   if (matches.length === 0) return null
 
+  // If no explicit title segment matched, treat everything before the first recognized section as the title
+  if (matches[0].position > 0 && !matches.find(m => m.key === 'title')) {
+    const fallbackTitleRaw = cleanBlock.slice(0, matches[0].position).trim()
+    if (fallbackTitleRaw) {
+      recipe.title = normalizeLine(fallbackTitleRaw.replace(/^(?:recipe ?\d*\s*:?|-?\s*name:?)\s*/i, '')).trim()
+    }
+  }
+
   matches.forEach((match, idx) => {
-    const start = match.position + match.label.length
-    const end = matches[idx + 1]?.position ?? block.length
-    const value = normalizeLine(block.slice(start, end))
+    const start = match.position + match.length
+    const end = matches[idx + 1]?.position ?? cleanBlock.length
+    const value = cleanBlock.slice(start, end).trim()
     if (!value) return
 
     if (match.key === 'title') {
@@ -249,11 +267,11 @@ export default function RecipesView({ recipes, embedded = false }) {
       )}
 
       <div className="recipes-content">
-        {intro && (
+        {/* intro && (
           <section className="recipes-intro-card">
             <p>{intro}</p>
           </section>
-        )}
+        ) */}
 
         {parsedRecipes.map((recipe, idx) => (
           <article key={`${recipe.title}-${idx}`} className="recipe-card">
@@ -262,17 +280,17 @@ export default function RecipesView({ recipes, embedded = false }) {
               {recipe.title && (
                 <h2 className="recipe-title">{recipe.title}</h2>
               )}
-              {recipe.intro.length > 0 && (
+              {/* recipe.intro.length > 0 && (
                 <p className="recipe-intro">{recipe.intro.join(' ')}</p>
-              )}
+              ) */}
             </div>
 
             <div className="recipe-sections">
               <RecipeSection title={SECTION_LABELS.benefits} items={recipe.benefits} accent="accent" />
               <RecipeSection title={SECTION_LABELS.ingredients} items={recipe.ingredients} accent="earth" />
               <RecipeSection title={SECTION_LABELS.preparation} items={recipe.preparation} accent="leaf" variant="steps" />
-              <RecipeSection title={SECTION_LABELS.timing} items={recipe.timing} accent="accent" />
               <RecipeSection title={SECTION_LABELS.precautions} items={recipe.precautions} accent="earth" />
+              <RecipeSection title={SECTION_LABELS.timing} items={recipe.timing} accent="accent" />
             </div>
           </article>
         ))}
