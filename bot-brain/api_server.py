@@ -314,17 +314,18 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
                 # 2. ALSO save to reports collection so it shows up in "My Consultations"
                 # get session info to find user_id
                 session = await db.chat_sessions.find_one({"_id": ObjectId(session_id)})
-                if session and "user_id" in session:
+                if session and "userId" in session:
                     # Clean the JSON for specific fields if we want, or just store the diagnosis string
                     # The reports page expects diagnosis, symptoms, recommendations, date
                     import json
                     try:
                         rj = json.loads(report_json)
                         await db.reports.insert_one({
-                            "patientId": ObjectId(session["user_id"]),
+                            "patientId": session["userId"],
+                            "sessionId": ObjectId(session_id),
                             "diagnosis": rj.get("diagnosis", title),
-                            "symptoms": rj.get("findings", ""),
-                            "recommendations": rj.get("root_causes", ""),
+                            "symptoms": ", ".join(rj.get("findings")) if isinstance(rj.get("findings"), list) else rj.get("findings", ""),
+                            "recommendations": ", ".join(rj.get("root_causes")) if isinstance(rj.get("root_causes"), list) else rj.get("root_causes", ""),
                             "date": utcnow().strftime("%Y-%m-%d"),
                             "createdAt": utcnow()
                         })
@@ -332,7 +333,8 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
                         print(f"Error parsing JSON for report save: {e}")
                         # Fallback if JSON fails
                         await db.reports.insert_one({
-                            "patientId": ObjectId(session["user_id"]),
+                            "patientId": session["userId"],
+                            "sessionId": ObjectId(session_id),
                             "diagnosis": title,
                             "symptoms": "AI Assessment",
                             "recommendations": "Review session history",

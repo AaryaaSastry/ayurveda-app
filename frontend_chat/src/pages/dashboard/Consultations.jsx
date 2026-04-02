@@ -1,13 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import ReportCard from '../../components/dashboard/ReportCard';
-import { Search, Filter, SlidersHorizontal, Activity, FileText, ChevronRight, Loader2 } from 'lucide-react';
-import { patientApi } from '../../services/api';
+import { Search, Filter, SlidersHorizontal, Activity, FileText, ChevronRight, Loader2, X, Download } from 'lucide-react';
+import { patientApi, chatApi } from '../../services/api';
 import { Link } from 'react-router-dom';
+import ReportRenderer from '../../ReportRenderer';
+import { downloadMedicalReportPDF } from '../../utils/pdfExport';
 
 const Consultations = () => {
   const [reports, setReports] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState('newest'); // 'newest' or 'oldest'
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [fullReportData, setFullReportData] = useState(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false);
+
+  const openReportDrawer = async (report) => {
+    setSelectedReportId(report._id);
+    setIsDrawerOpen(true);
+    setIsDetailsLoading(true);
+    try {
+      if (report.sessionId) {
+        const res = await chatApi.getSession(report.sessionId);
+        const sessionData = res.data;
+        let diagObj = sessionData.diagnosis;
+        if (typeof diagObj === 'string') {
+          const cleaned = diagObj.replace(/```json/g, '').replace(/```/g, '').trim();
+          const start = cleaned.indexOf('{');
+          const end = cleaned.lastIndexOf('}');
+          diagObj = JSON.parse(cleaned.substring(start, end + 1));
+        }
+        setFullReportData(diagObj);
+      }
+    } catch (err) {
+      console.error('Failed to load full report:', err);
+    } finally {
+      setIsDetailsLoading(false);
+    }
+  };
+
+  const closeDrawer = () => {
+    setIsDrawerOpen(false);
+    setTimeout(() => {
+      setFullReportData(null);
+      setSelectedReportId(null);
+    }, 300);
+  };
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -24,11 +62,10 @@ const Consultations = () => {
     fetchReports();
   }, []);
 
-  const filteredReports = reports.filter(report => {
-    const diagnosisName = report.diagnosis?.name || '';
-    const symptoms = report.symptoms?.join(', ') || '';
-    return diagnosisName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           symptoms.toLowerCase().includes(searchTerm.toLowerCase());
+  const sortedReports = [...reports].sort((a, b) => {
+    const dateA = new Date(a.createdAt || a.date).getTime();
+    const dateB = new Date(b.createdAt || b.date).getTime();
+    return sortOrder === 'newest' ? dateB - dateA : dateA - dateB;
   });
 
   return (
@@ -45,19 +82,20 @@ const Consultations = () => {
           </div>
           
           <div className="flex items-center gap-4">
-             <div className="relative group/search min-w-[340px]">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within/search:text-black transition-colors" size={18} strokeWidth={2.5} />
-                <input 
-                  type="text" 
-                  placeholder="Search diagnoses or symptoms..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-12 pr-6 py-4 bg-[#f8faf9] border-2 border-transparent focus:border-ayur-forest/30 focus:bg-white rounded-2xl outline-none text-sm font-bold text-black transition-all duration-300 shadow-sm"
-                />
+             <div className="relative group/sort">
+                <SlidersHorizontal className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within/sort:text-black transition-colors" size={18} strokeWidth={2.5} />
+                <select 
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                  className="pl-12 pr-10 py-4 bg-[#f8faf9] border-2 border-transparent focus:border-black focus:bg-white rounded-2xl outline-none text-sm font-black uppercase tracking-[1px] text-black appearance-none transition-all duration-300 shadow-sm cursor-pointer min-w-[220px]"
+                >
+                   <option value="newest">Most Recent</option>
+                   <option value="oldest">Oldest First</option>
+                </select>
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                   <ChevronRight size={16} strokeWidth={3} className="rotate-90" />
+                </div>
              </div>
-             <button className="p-4 bg-white border-2 border-gray-100 text-gray-400 rounded-2xl hover:text-black hover:border-black transition-all shadow-sm active:scale-95 group">
-                <SlidersHorizontal size={20} className="group-hover:rotate-180 transition-transform duration-500" strokeWidth={2.5} />
-             </button>
           </div>
         </header>
 
@@ -66,20 +104,20 @@ const Consultations = () => {
              {[1,2,3].map(i => <div key={i} className="h-80 bg-[#f8faf9] border-2 border-gray-100 rounded-[32px] animate-pulse"></div>)}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-             {filteredReports.map(report => (
-               <ReportCard key={report._id} report={report} />
-             ))}
-             
-             {filteredReports.length === 0 && (
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {sortedReports.map(report => (
+                <ReportCard key={report._id} report={report} onView={() => openReportDrawer(report)} />
+              ))}
+              
+              {sortedReports.length === 0 && (
                 <div className="col-span-full py-32 flex flex-col items-center justify-center text-center space-y-8 bg-[#fcfdfd] border-2 border-dashed border-gray-100 rounded-[48px] animate-fade-in shadow-inner">
                    <div className="relative w-28 h-28 bg-white border-2 border-gray-100 rounded-[40px] flex items-center justify-center text-gray-100 shadow-sm">
                       <FileText size={64} className="opacity-5 scale-125" />
-                      <Search size={32} className="absolute text-emerald-500" strokeWidth={2.5} />
+                      <Activity size={32} className="absolute text-emerald-500" strokeWidth={2.5} />
                    </div>
                    <div className="space-y-2">
-                      <h3 className="text-2xl font-black text-black uppercase italic tracking-tight">Zero Matches Detected</h3>
-                      <p className="text-gray-400 font-bold text-[13px] uppercase tracking-widest leading-relaxed">System failed to correlate search parameters with records.</p>
+                      <h3 className="text-2xl font-black text-black uppercase italic tracking-tight">No Reports Found</h3>
+                      <p className="text-gray-400 font-bold text-[13px] uppercase tracking-widest leading-relaxed">You haven't completed any clinical consultations yet.</p>
                    </div>
                    <Link to="/chat" className="bg-black text-white px-12 py-4 rounded-[22px] font-black uppercase tracking-[3px] text-[11px] shadow-xl shadow-black/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-4">
                       <span>Begin Synthesis</span>
@@ -90,6 +128,75 @@ const Consultations = () => {
           </div>
         )}
       </div>
+
+      {/* Report Details Side Drawer */}
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
+            onClick={closeDrawer}
+          />
+          
+          {/* Drawer Content */}
+          <div className="relative w-full max-w-[600px] h-full bg-white shadow-[-10px_0_40px_rgba(0,0,0,0.1)] flex flex-col animate-slide-in-right">
+             <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                <div className="space-y-1">
+                   <div className="flex items-center gap-2 text-ayur-sage font-black uppercase text-[10px] tracking-[4px]">
+                      <FileText size={16} strokeWidth={2.5} />
+                      <span>Clinical Assessment</span>
+                   </div>
+                   <h3 className="text-2xl font-black text-black italic uppercase tracking-tighter">Full Report</h3>
+                </div>
+                <div className="flex items-center gap-3">
+                   {fullReportData && (
+                      <button
+                        onClick={() => downloadMedicalReportPDF(fullReportData)}
+                        className="p-3 bg-[#f8faf9] border-2 border-gray-100 rounded-2xl text-black hover:bg-black hover:text-white transition-all shadow-sm"
+                        title="Download PDF"
+                      >
+                         <Download size={20} strokeWidth={2.5} />
+                      </button>
+                   )}
+                   <button 
+                     onClick={closeDrawer} 
+                     className="p-3 bg-[#f8faf9] border-2 border-gray-100 rounded-2xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all shadow-sm"
+                   >
+                     <X size={24} />
+                   </button>
+                </div>
+             </div>
+
+             <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/20 p-8 pt-4">
+                {isDetailsLoading ? (
+                   <div className="h-full flex flex-col items-center justify-center space-y-4">
+                      <Loader2 size={48} className="animate-spin text-ayur-forest" />
+                      <p className="text-[10px] font-black uppercase tracking-[2px] text-gray-400">Synthesizing clinical data...</p>
+                   </div>
+                ) : fullReportData ? (
+                   <div className="animate-fade-in">
+                      <ReportRenderer report={fullReportData} />
+                      <div className="mt-10 p-8 bg-black text-white rounded-[32px] flex items-center justify-between relative overflow-hidden group">
+                         <div className="absolute top-0 right-0 w-32 h-full bg-ayur-forest opacity-20 skew-x-12 translate-x-12"></div>
+                         <div className="relative z-10 space-y-1">
+                            <h4 className="text-[10px] font-black uppercase tracking-[2px] opacity-60">Ready for consultation?</h4>
+                            <p className="text-sm font-bold opacity-90">Book an appointment with a verified practitioner.</p>
+                         </div>
+                         <Link to="/doctors" className="relative z-10 px-6 py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-[1px] hover:bg-ayur-sage hover:text-white transition-all shadow-xl">
+                            Find Doctors
+                         </Link>
+                      </div>
+                   </div>
+                ) : (
+                   <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-20">
+                      <FileText size={80} />
+                      <p className="font-bold text-sm">Failed to load detailed report data.</p>
+                   </div>
+                )}
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

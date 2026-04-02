@@ -375,7 +375,17 @@ const Chat = () => {
                         <div className="w-full relative py-8">
                           {reportData ? (
                             <div className="space-y-8">
-                              <ReportRenderer report={reportData} />
+                              <div className="bg-white border-2 border-slate-100 rounded-[28px] p-10 space-y-4 shadow-sm relative group overflow-hidden transition-all hover:border-black cursor-default">
+                                <div className="absolute top-0 right-0 w-24 h-1 bg-emerald-500"></div>
+                                <div className="flex items-center gap-3 text-emerald-600 mb-2">
+                                   <ShieldCheck size={18} strokeWidth={2.5} />
+                                   <span className="text-[10px] font-black uppercase tracking-[2px]">Biological Synthesis Verified</span>
+                                </div>
+                                <h3 className="text-3xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">{reportData.diagnosis?.name || "Ayurvedic Assessment"}</h3>
+                                <p className="text-slate-600 font-medium text-lg leading-relaxed italic opacity-80 line-clamp-2">
+                                   "{reportData.diagnosis?.reasoning || 'Systemic restoration of bodily equilibrium through focused Ayurvedic protocols.'}"
+                                </p>
+                              </div>
                               <div className="flex flex-wrap justify-center gap-4">
                                 <button
                                   onClick={() => downloadMedicalReportPDF(reportData)}

@@ -24,6 +24,7 @@ export const patientApi = {
   updateProfile: (data) => api.patch('/patient/profile', data),
   getMessages: (patientId) => api.get(`/messages/patient/${patientId}`),
   sendMessage: (data) => api.post('/messages/send', data),
+  hideAppointment: (id) => api.delete(`/patient/appointments/${id}`),
 };
 
 export const publicApi = {

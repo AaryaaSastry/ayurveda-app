@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, MapPin, User, MessageSquare, ArrowRight, Video, Stethoscope, ChevronRight, Activity, X, ExternalLink, Navigation } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, MessageSquare, ArrowRight, Video, Stethoscope, ChevronRight, Activity, X, ExternalLink, Navigation, Loader2, Trash2 } from 'lucide-react';
 
-const AppointmentCard = ({ appointment }) => {
+const AppointmentCard = ({ appointment, onDelete }) => {
+   const [loading, setLoading] = useState(false);
    const [showSessionInfo, setShowSessionInfo] = useState(false);
    const isConfirmed = (appointment.status || "").toLowerCase() === 'confirmed';
    const isPending = (appointment.status || "").toLowerCase() === 'pending';
@@ -33,6 +34,25 @@ const AppointmentCard = ({ appointment }) => {
          onMouseLeave={() => setShowSessionInfo(false)}
       >
          <div className={`absolute top-0 right-0 w-32 h-1.5 ${isConfirmed ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : isPending ? 'bg-amber-500 shadow-[0_0_10px_#f59e0b]' : isCancelled ? 'bg-red-500 shadow-[0_0_10px_#ef4444]' : 'bg-gray-200'}`}></div>
+
+         <button
+            onClick={async (e) => {
+               e.stopPropagation();
+               if (window.confirm('Hide this appointment from your schedule?')) {
+                  setLoading(true);
+                  try {
+                     await onDelete(appointment._id);
+                  } finally {
+                     setLoading(false);
+                  }
+               }
+            }}
+            disabled={loading}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/80 backdrop-blur-md border border-gray-100 rounded-2xl flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-all z-20 shadow-sm opacity-0 group-hover:opacity-100 disabled:opacity-50"
+            title="Hide Appointment"
+         >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={20} />}
+         </button>
 
          <div className="relative z-10 space-y-8 flex-1">
             <div className="flex items-start justify-between">

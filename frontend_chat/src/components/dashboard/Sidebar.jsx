@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
   FileText,
   Calendar,
   MessageSquare,
@@ -95,7 +94,8 @@ const Sidebar = () => {
   };
 
   const menuItems = [
-    { name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/' },
+    { name: 'Consultation', icon: <Activity size={18} />, path: '/chat' },
+    { name: 'My Reports', icon: <FileText size={18} />, path: '/consultations' },
     { name: 'My Appointments', icon: <Calendar size={18} />, path: '/appointments' },
     { name: 'Messages', icon: <MessageSquare size={18} />, path: '/messages' },
     { name: 'Find Doctors', icon: <Search size={18} />, path: '/find-doctors' },
@@ -109,7 +109,7 @@ const Sidebar = () => {
       ></div>
       {/* Brand Header */}
       <div className="p-7 mb-4">
-        <NavLink to="/" className="flex items-center gap-3.5 group">
+        <NavLink to="/chat" className="flex items-center gap-3.5 group">
           <div className="w-10 h-10 bg-white border-2 border-gray-100 rounded-2xl flex items-center justify-center text-black shadow-sm group-hover:scale-105 transition-all duration-300">
             <Activity size={22} strokeWidth={2.5} className="group-hover:rotate-6 transition-transform text-emerald-500" />
           </div>

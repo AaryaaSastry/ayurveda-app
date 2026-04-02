@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Chat from './Chat'
 import Auth from './pages/Auth'
 import PatientDashboard from './pages/dashboard/PatientDashboard'
-import DashboardHome from './pages/dashboard/DashboardHome'
+
 import Consultations from './pages/dashboard/Consultations'
 import Appointments from './pages/dashboard/Appointments'
 import Messages from './pages/dashboard/Messages'
@@ -38,7 +38,7 @@ export default function App() {
             path="/login"
             element={
               localStorage.getItem('token')
-                ? <Navigate to="/" replace />
+                ? <Navigate to="/chat" replace />
                 : <Auth />
             }
           />
@@ -46,7 +46,7 @@ export default function App() {
             path="/signup"
             element={
               localStorage.getItem('token')
-                ? <Navigate to="/" replace />
+                ? <Navigate to="/chat" replace />
                 : <Auth />
             }
           />
@@ -60,7 +60,7 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<DashboardHome />} />
+            <Route index element={<Navigate to="/chat" replace />} />
             <Route path="consultations" element={<Consultations />} />
             <Route path="appointments" element={<Appointments />} />
             <Route path="messages" element={<Messages />} />
@@ -75,7 +75,7 @@ export default function App() {
             path="*"
             element={
               localStorage.getItem('token')
-                ? <Navigate to="/" replace />
+                ? <Navigate to="/chat" replace />
                 : <Navigate to="/login" replace />
             }
           />

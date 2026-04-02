@@ -243,14 +243,21 @@ export function downloadMedicalReportPDF(report) {
     const diagnosisReason = typeof report.diagnosis === 'object' ? report.diagnosis?.reasoning : null;
     drawDataRowDynamic('Reason / Clinical Assessment', diagnosisReason);
 
+    drawDataRowDynamic('Clinical Threat Level', report.threatLevel);
+
+    const treatmentStr = Array.isArray(report.treatments) ? report.treatments.join(', ') : report.treatments;
+    drawDataRowDynamic('Ayurvedic Treatment Modalities', treatmentStr);
+
     drawDataRowDynamic('Dietary Inclusion (Pathya)', report.dietaryGuide?.toConsume);
 
     drawDataRowDynamic('Dietary Restriction (Apathya)', report.dietaryGuide?.toAvoid);
 
     drawDataRowDynamic('Lifestyle Adjustments', report.lifestyleChanges);
 
-    const herbalArr = report.herbalPreparations?.length ? report.herbalPreparations.map(h => `${h.name} (${h.purpose})`) : null;
+    const herbalArr = report.herbalPreparations?.length ? report.herbalPreparations.map(h => `${h.name} (${h.purpose})${h.safety ? ' - Safety: ' + h.safety : ''}`) : null;
     drawDataRowDynamic('Herbal Formulations', herbalArr);
+
+    drawDataRowDynamic('Clinical Prognosis', report.prognosis);
 
     y += 10; // Space between table and disclaimer
 

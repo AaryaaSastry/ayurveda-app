@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AppointmentCard from '../../components/dashboard/AppointmentCard';
-import { Calendar as CalendarIcon, Filter, Search, PlusCircle, LayoutGrid, List, Activity, Loader2, Video, MapPin, X, ExternalLink, Navigation, ArrowRight, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter, Search, PlusCircle, LayoutGrid, List, Activity, Loader2, Video, MapPin, X, ExternalLink, Navigation, ArrowRight, ChevronRight, Trash2 } from 'lucide-react';
 import { patientApi } from '../../services/api';
 import { Link } from 'react-router-dom';
 
@@ -16,19 +16,38 @@ const Appointments = () => {
   };
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      setLoading(true);
-      try {
-        const res = await patientApi.getAppointments();
-        setAppointments(res.data);
-      } catch (err) {
-        console.error('Failed to fetch appointments:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchAppointments();
   }, []);
+
+  const fetchAppointments = async () => {
+    setLoading(true);
+    try {
+      const res = await patientApi.getAppointments();
+      setAppointments(res.data);
+    } catch (err) {
+      console.error('Failed to fetch appointments:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteAppointment = async (id) => {
+    console.log('🗑 Attempting to hide appointment:', id);
+    try {
+      const res = await patientApi.hideAppointment(id);
+      console.log('✅ Backend hide successful:', res.data);
+      setAppointments(prev => {
+        const filtered = prev.filter(appt => {
+          const apptId = appt._id?.toString() || appt.id?.toString();
+          return apptId !== id.toString();
+        });
+        console.log(`📊 Filtered list from ${prev.length} to ${filtered.length} items`);
+        return filtered;
+      });
+    } catch (err) {
+      console.error('❌ Failed to hide appointment:', err);
+    }
+  };
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-6 md:px-8 lg:px-12 py-10 bg-white">
@@ -87,7 +106,7 @@ const Appointments = () => {
         ) : view === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
              {appointments.map(appt => (
-               <AppointmentCard key={appt._id} appointment={appt} />
+               <AppointmentCard key={appt._id} appointment={appt} onDelete={handleDeleteAppointment} />
              ))}
           </div>
         ) : (
@@ -153,13 +172,24 @@ const Appointments = () => {
                               </span>
                            </td>
                            <td className="px-8 py-7 text-right">
-                              <button 
-                                onClick={() => setSelectedAppt(appt)}
-                                className="px-6 py-2.5 bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-[2px] shadow-lg shadow-black/10 hover:shadow-black/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 ml-auto opacity-20 group-hover:opacity-100"
-                              >
-                                 <span>Access</span>
-                                 <ChevronRight size={14} strokeWidth={3} />
-                              </button>
+                              <div className="flex items-center justify-end gap-3 opacity-20 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                  onClick={() => setSelectedAppt(appt)}
+                                  className="px-6 py-2.5 bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-[2px] shadow-lg shadow-black/10 hover:shadow-black/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                >
+                                   <span>Access</span>
+                                   <ChevronRight size={14} strokeWidth={3} />
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if (window.confirm('Hide this appointment?')) handleDeleteAppointment(appt._id);
+                                  }}
+                                  className="p-2.5 bg-white border-2 border-gray-100 text-gray-400 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-all shadow-sm"
+                                  title="Hide"
+                                >
+                                   <Trash2 size={16} strokeWidth={3} />
+                                </button>
+                              </div>
                            </td>
                         </tr>
                       ))}
