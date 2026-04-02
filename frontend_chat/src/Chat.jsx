@@ -205,7 +205,7 @@ const Chat = () => {
         setTimeout(() => {
           setSessions(prev => prev.map(s => s._id === sessId ? {
             ...s,
-            messages: [...s.messages, { role: 'bot', text: 'Diagnostic analysis complete. Based on your diagnosis and the suggested treatments, I recommend consulting with our specialized doctors. You can view the full list by clicking the \'Recommended Doctors\' button next to your report.' }]
+            messages: [...s.messages, { role: 'bot', text: 'Diagnostic analysis complete. A personalized wellness plan with custom recipes will be generated according to your report. I have also compiled a list of recommended doctors based on the required treatments. You can access these by clicking the buttons next to your report.' }]
           } : s));
         }, 1000);
       } else {

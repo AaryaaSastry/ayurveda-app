@@ -107,9 +107,22 @@ def get_next_question(symptoms, history):
         )
         return send(prompt)
 
-    # 2. Main Issue (after user gives details)
+    # 2. Main Issue (after user gives details via legacy flow)
     if len(history) == 2:
         return "Thank you. Now, please describe exactly what health issue or symptoms you are experiencing today in as much detail as possible."
+
+    # 3. If user directly initiates the chat with a symptom block (e.g. they clicked a frontend suggestion)
+    if len(history) == 1:
+        user_first_msg = history[0].replace("User: ", "")
+        prompt = (
+            f"The user just started the consultation by stating: '{user_first_msg}'\n"
+            "You are an Ayurvedic AI assistant. Generate a highly empathetic response that does TWO things:\n"
+            "1. Acknowledges their specific issue and asks ONE brief follow-up question perfectly tailored to it to get them to explain their issue in deeper detail (e.g. 'Could you describe when during the day your allergy symptoms are usually worst?').\n"
+            "2. Asks the user to provide their basic details (name,age, gender, height, weight) and daily routine (diet, lifestyle, active vs sedentary) before proceeding with the full consultation.\n"
+            "Keep the response professional, small and natural"
+            "Let maximum of 50 words be used"
+        )
+        return send(prompt)
 
     # --- AI INVOLVED AFTER THIS POINT ---
     
@@ -189,7 +202,8 @@ def diagnose(symptoms, history):
             "  \"patientInfo\": { \"name\": \"...\", \"age\": \"...\", \"gender\": \"...\", \"height\": \"...\", \"weight\": \"...\", \"constitution\": \"...\" },\n"
             "  \"symptomsReported\": [\"...\", \"...\"],\n"
             "  \"diagnosis\": { \"name\": \"...\", \"reasoning\": \"...\" },\n"
-            "  \"threatLevel\": \"Low/Moderate/High (based on symptoms like fever or acute pain)\",\n"
+                "  \"threatLevel\": \"Low/Moderate/High (based on symptoms like fever or acute pain)\",\n"
+            "  \"treatments\": [\"Top 5 Ayurvedic treatment categories required to cure this disease (e.g., Panchakarma, Shirodhara, Dietary Therapy, Kayachikitsa, etc)\"],\n"
             "  \"lifestyleChanges\": [\"...\", \"...\"],\n"
             "  \"dietaryGuide\": {\n"
             "    \"toConsume\": [\"...\"],\n"

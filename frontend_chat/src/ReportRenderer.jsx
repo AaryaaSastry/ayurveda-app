@@ -44,9 +44,20 @@ function ReportRenderer({ report }) {
              </div>
           </div>
 
-          <p className="text-[15px] leading-relaxed text-black font-medium opacity-80 italic border-l-4 border-ayur-sage/30 pl-6">
-             "The observed symptoms align with traditional Ayurvedic patterns requiring holistic restoration of bodily equilibrium."
-          </p>
+          {report.treatments && report.treatments.length > 0 ? (
+             <div className="space-y-4">
+               <h4 className="text-[11px] font-black text-ayur-forest uppercase tracking-[2px]">Medical Recommendations</h4>
+               <div className="flex flex-wrap gap-2">
+                 {report.treatments.map((t, i) => (
+                   <span key={i} className="px-4 py-2 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-full text-xs font-bold shadow-sm whitespace-nowrap">✦ {t}</span>
+                 ))}
+               </div>
+             </div>
+          ) : (
+            <p className="text-[15px] leading-relaxed text-black font-medium opacity-80 italic border-l-4 border-ayur-sage/30 pl-6">
+               "The observed symptoms align with traditional Ayurvedic patterns requiring holistic restoration of bodily equilibrium."
+            </p>
+          )}
         </div>
       </div>
     </div>
