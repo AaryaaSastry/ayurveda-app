@@ -103,7 +103,7 @@ const Sidebar = () => {
 
   return (
     <aside style={{ width: `${sidebarWidth}px` }} className="flex-shrink-0 h-screen bg-white text-black flex flex-col font-sans border-r-2 border-gray-100 relative z-50 transition-none">
-      <div 
+      <div
         className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-ayur-sage/30 active:bg-ayur-sage/60 z-50 transition-colors"
         onMouseDown={startResizingSidebar}
       ></div>
@@ -116,8 +116,8 @@ const Sidebar = () => {
           <div className="flex flex-col">
             <h1 className="font-black text-black text-[18px] tracking-tight leading-none italic uppercase">AyurCare <span className="text-emerald-600 font-medium lowercase tracking-normal">ai</span></h1>
             <div className="flex items-center gap-1.5 mt-2">
-               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]"></div>
-               <span className="text-[10px] text-gray-400 font-black uppercase tracking-[3px]">Clinical Portal</span>
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]"></div>
+              <span className="text-[10px] text-gray-400 font-black uppercase tracking-[3px]">Clinical Portal</span>
             </div>
           </div>
         </NavLink>
@@ -125,7 +125,7 @@ const Sidebar = () => {
 
       {/* Action Button */}
       <div className="px-5 mb-8">
-        <button 
+        <button
           onClick={() => {
             // Force navigate to chat and let it handle new session logic
             navigate('/chat', { state: { forceNew: true } });
@@ -151,8 +151,8 @@ const Sidebar = () => {
                 key={item.name}
                 to={item.path}
                 className={`flex items-center justify-between px-5 py-3.5 rounded-[18px] transition-all duration-300 group border-2 ${isActive
-                    ? 'bg-white border-black text-black shadow-lg shadow-gray-100'
-                    : 'text-gray-400 border-transparent hover:bg-[#f8faf9] hover:text-black hover:border-gray-100'
+                  ? 'bg-white border-black text-black shadow-lg shadow-gray-100'
+                  : 'text-gray-400 border-transparent hover:bg-[#f8faf9] hover:text-black hover:border-gray-100'
                   }`}
               >
                 <div className="flex items-center gap-4">
@@ -181,8 +181,8 @@ const Sidebar = () => {
                   key={session._id}
                   to={`/chat/${session._id}`}
                   className={`flex items-center justify-between px-4 py-3.5 rounded-[18px] transition-all duration-300 group relative border-2 ${isActive
-                      ? 'bg-white border-black text-black shadow-sm'
-                      : 'text-gray-400 border-transparent hover:bg-[#f8faf9] hover:border-gray-100 hover:text-black'
+                    ? 'bg-white border-black text-black shadow-sm'
+                    : 'text-gray-400 border-transparent hover:bg-[#f8faf9] hover:border-gray-100 hover:text-black'
                     }`}
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
@@ -224,7 +224,7 @@ const Sidebar = () => {
         </button>
       </div>
     </aside>
-);
+  );
 };
 
 export default Sidebar;

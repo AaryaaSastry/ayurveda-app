@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, User, MessageSquare, ArrowRight, Video, Stethoscope, ChevronRight, Activity, X, ExternalLink, Navigation, Loader2, Trash2 } from 'lucide-react';
 
-const AppointmentCard = ({ appointment, onDelete }) => {
+const AppointmentCard = ({ appointment, onDelete, onChat }) => {
    const [loading, setLoading] = useState(false);
    const [showSessionInfo, setShowSessionInfo] = useState(false);
    const isConfirmed = (appointment.status || "").toLowerCase() === 'confirmed';
@@ -108,7 +108,10 @@ const AppointmentCard = ({ appointment, onDelete }) => {
                <span>Access Session</span>
                <ChevronRight size={16} strokeWidth={3} className="group-hover/btn:translate-x-1 transition-transform" />
             </button>
-            <button className="p-4.5 bg-white border-2 border-gray-100 text-black rounded-2xl hover:bg-gray-50 hover:border-black transition-all shadow-sm active:scale-95 group/msg">
+            <button 
+               onClick={onChat}
+               className="p-4.5 bg-white border-2 border-gray-100 text-black rounded-2xl hover:bg-gray-50 hover:border-black transition-all shadow-sm active:scale-95 group/msg"
+            >
                <MessageSquare size={20} strokeWidth={2.5} className="group-hover/msg:rotate-12 transition-transform" />
             </button>
          </div>

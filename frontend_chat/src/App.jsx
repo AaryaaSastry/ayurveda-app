@@ -64,6 +64,7 @@ export default function App() {
             <Route path="consultations" element={<Consultations />} />
             <Route path="appointments" element={<Appointments />} />
             <Route path="messages" element={<Messages />} />
+            <Route path="messages/:chatId" element={<Messages />} />
             <Route path="find-doctors" element={<FindDoctors />} />
             <Route path="profile" element={<Profile />} />
             <Route path="chat" element={<Chat />} />

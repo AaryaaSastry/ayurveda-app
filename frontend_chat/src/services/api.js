@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://127.0.0.1:5000/api';
+const API_BASE_URL = 'http://localhost:5001/api';
 const CHAT_API_BASE_URL = 'http://localhost:8000';
 
 const api = axios.create({
@@ -41,6 +41,19 @@ export const chatApi = {
   deleteSession: (sessionId) => axios.delete(`${CHAT_API_BASE_URL}/api/chat/session/${sessionId}`),
   ask: (sessionId, message, diagnosis) => axios.post(`${CHAT_API_BASE_URL}/ask?user_id=${encodeURIComponent(sessionId)}`, { message, diagnosis }),
   getRecipes: (sessionId, diagnosis) => axios.post(`${CHAT_API_BASE_URL}/recipes?user_id=${encodeURIComponent(sessionId)}`, { diagnosis }),
+};
+
+export const docConnectApi = {
+  createChat: (user2_id) => api.post('/chat/create', { user2_id }),
+  getChats: () => api.get('/chat/my-chats'),
+  getMessages: (chatId) => api.get(`/chat/${chatId}/messages`),
+  sendMessage: (chat_id, message_text) => api.post('/chat/send', { chat_id, message_text }),
+  
+  startNegotiation: (chatId, data) => api.post('/negotiation/start', { chat_id: chatId, ...data }),
+  counterNegotiation: (id, data) => api.post('/negotiation/counter', { negotiation_id: id, ...data }),
+  acceptNegotiation: (id) => api.post('/negotiation/accept', { negotiation_id: id }),
+  lockNegotiation: (id) => api.post('/negotiation/lock', { negotiation_id: id }),
+  getNegotiation: (chatId) => api.get(`/negotiation/${chatId}`),
 };
 
 export default api;

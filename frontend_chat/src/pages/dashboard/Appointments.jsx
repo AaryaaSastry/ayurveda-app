@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import AppointmentCard from '../../components/dashboard/AppointmentCard';
 import { Calendar as CalendarIcon, Filter, Search, PlusCircle, LayoutGrid, List, Activity, Loader2, Video, MapPin, X, ExternalLink, Navigation, ArrowRight, ChevronRight, Trash2 } from 'lucide-react';
-import { patientApi } from '../../services/api';
-import { Link } from 'react-router-dom';
+import { patientApi, docConnectApi } from '../../services/api';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Appointments = () => {
+  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('grid');
   const [selectedAppt, setSelectedAppt] = useState(null);
+
+  const handleOpenChat = async (doctorId) => {
+    try {
+      const res = await docConnectApi.createChat(doctorId);
+      navigate(`/messages/${res.data._id}`);
+    } catch (err) {
+      console.error('Failed to open chat:', err);
+    }
+  };
 
   const formatTime = (date) => {
     if (!date) return null;
@@ -106,7 +116,12 @@ const Appointments = () => {
         ) : view === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
              {appointments.map(appt => (
-               <AppointmentCard key={appt._id} appointment={appt} onDelete={handleDeleteAppointment} />
+               <AppointmentCard 
+                 key={appt._id} 
+                 appointment={appt} 
+                 onDelete={handleDeleteAppointment}
+                 onChat={() => handleOpenChat(appt.doctorId?._id || appt.doctorId)}
+               />
              ))}
           </div>
         ) : (
@@ -173,6 +188,12 @@ const Appointments = () => {
                            </td>
                            <td className="px-8 py-7 text-right">
                               <div className="flex items-center justify-end gap-3 opacity-20 group-hover:opacity-100 transition-opacity">
+                                 <button 
+                                   onClick={() => handleOpenChat(appt.doctorId?._id || appt.doctorId)}
+                                   className="p-2.5 bg-white border-2 border-gray-100 text-indigo-500 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm"
+                                 >
+                                    <MessageSquare size={16} strokeWidth={3} />
+                                 </button>
                                 <button 
                                   onClick={() => setSelectedAppt(appt)}
                                   className="px-6 py-2.5 bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-[2px] shadow-lg shadow-black/10 hover:shadow-black/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"

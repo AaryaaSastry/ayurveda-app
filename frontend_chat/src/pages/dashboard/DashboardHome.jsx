@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Calendar, 
-  CheckCircle2, 
-  MessageSquare, 
-  Eye, 
-  Download, 
-  Clock, 
-  MapPin, 
+import {
+  FileText,
+  Calendar,
+  CheckCircle2,
+  MessageSquare,
+  Eye,
+  Download,
+  Clock,
+  MapPin,
   User,
   ArrowRight,
   TrendingUp,
@@ -27,7 +27,7 @@ const DashboardHome = () => {
     confirmedAppointments: 0,
     unreadMessages: 0,
   });
-  
+
   const [recentReports, setRecentReports] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ const DashboardHome = () => {
 
         setRecentReports(reports.slice(0, 3));
         setUpcomingAppointments(appointments.filter(a => a.status === 'pending' || a.status === 'confirmed').slice(0, 2));
-        
+
         setStats({
           totalConsultations: reports.length,
           upcomingAppointments: appointments.filter(a => a.status === 'pending').length,
@@ -65,22 +65,22 @@ const DashboardHome = () => {
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[400px] space-y-6">
-       <div className="relative">
-          <div className="w-12 h-12 border-4 border-ayur-sage/10 border-t-ayur-sage rounded-full animate-spin"></div>
-          <Activity size={16} className="absolute inset-0 m-auto text-ayur-sage animate-pulse" />
-       </div>
-       <p className="text-[10px] font-black text-ayur-sage/40 uppercase tracking-[4px]">Synthesizing health data...</p>
+      <div className="relative">
+        <div className="w-12 h-12 border-4 border-ayur-sage/10 border-t-ayur-sage rounded-full animate-spin"></div>
+        <Activity size={16} className="absolute inset-0 m-auto text-ayur-sage animate-pulse" />
+      </div>
+      <p className="text-[10px] font-black text-ayur-sage/40 uppercase tracking-[4px]">Synthesizing health data...</p>
     </div>
   );
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar px-6 sm:px-8 md:px-12 py-10 bg-white">
       <div className="max-w-[1200px] mx-auto space-y-12">
-        
+
         {/* Welcome Header */}
         <div className="relative overflow-hidden bg-[#f8faf9] border-2 border-gray-100 rounded-[40px] p-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
           <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-[400px] h-[400px] bg-ayur-sage/10 rounded-full blur-[100px] -z-10"></div>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-black font-black uppercase text-[10px] tracking-[4px]">
               <Sparkles size={14} className="text-emerald-500" />

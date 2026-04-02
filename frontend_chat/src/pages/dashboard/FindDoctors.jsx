@@ -1,13 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Star, ShieldCheck, Clock, ArrowRight, Filter, Activity, User, Loader2 } from 'lucide-react';
-import { publicApi, patientApi, chatApi } from '../../services/api';
+import { Search, MapPin, Star, ShieldCheck, Clock, ArrowRight, Filter, Activity, User, Loader2, MessageSquare } from 'lucide-react';
+import { publicApi, patientApi, chatApi, docConnectApi } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const FindDoctors = ({ embedded, diagnosis }) => {
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState({ lat: 19.0760, lng: 72.8777 }); // Default: Mumbai
   const [isSearching, setIsSearching] = useState(false);
+
+  const handleChat = async (doctorId) => {
+    try {
+      const res = await docConnectApi.createChat(doctorId);
+      navigate(`/messages/${res.data._id}`);
+    } catch (err) {
+      console.error('Failed to start chat:', err);
+    }
+  };
 
   useEffect(() => {
     if (embedded) {
@@ -244,12 +254,19 @@ const FindDoctors = ({ embedded, diagnosis }) => {
                     </div>
                   </div>
 
-                  <div className="w-full space-y-2">
+                  <div className="w-full grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleChat(doctor._id)}
+                      className={`w-full bg-slate-100 text-ayur-forest ${embedded ? 'py-3 rounded-[14px] text-[10px]' : 'py-4 rounded-3xl text-sm'} font-black uppercase tracking-widest hover:bg-ayur-forest hover:text-white active:scale-95 transition-all flex items-center justify-center gap-2 group/btn`}
+                    >
+                      <MessageSquare size={embedded ? 14 : 18} />
+                      <span>Chat</span>
+                    </button>
                     <button
                       onClick={() => handleBook(doctor._id)}
-                      className={`w-full bg-[#2d4038] text-white ${embedded ? 'py-3 rounded-[14px] text-[10px]' : 'py-4 rounded-3xl text-xs'} font-bold uppercase tracking-widest shadow-xl shadow-[#2d4038]/20 hover:bg-[#1a231f] active:scale-95 transition-all flex items-center justify-center gap-2 group/btn`}
+                      className={`w-full bg-[#2d4038] text-white ${embedded ? 'py-3 rounded-[14px] text-[10px]' : 'py-4 rounded-3xl text-sm'} font-bold uppercase tracking-widest shadow-xl shadow-[#2d4038]/20 hover:bg-[#1a231f] active:scale-95 transition-all flex items-center justify-center gap-2 group/btn`}
                     >
-                      <span>Book Clinical Visit</span>
+                      <span>Book</span>
                       <ArrowRight size={14} className="group-hover/btn:translate-x-1 transition-transform" />
                     </button>
                   </div>
