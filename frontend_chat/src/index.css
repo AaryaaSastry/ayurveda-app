@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
 :root {
   --sidebar-bg: #111916;
   --main-bg: #fdfdfd;
@@ -13,7 +17,7 @@
 html, body {
   background-color: var(--main-bg);
   color: var(--text-main);
-  font-family: 'Outfit', 'Inter', sans-serif;
+  font-family: 'Inter', 'Outfit', system-ui, sans-serif;
   height: 100%;
   -webkit-font-smoothing: antialiased;
 }

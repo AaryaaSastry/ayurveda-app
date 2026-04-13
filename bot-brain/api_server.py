@@ -6,6 +6,7 @@ from bson.errors import InvalidId
 from datetime import datetime, timezone
 import json
 import os
+import asyncio
 from dotenv import load_dotenv
 from bot import extract_symptoms_from_text, get_next_question, diagnose, should_give_diagnosis
 from gemini_client import send
@@ -22,15 +23,27 @@ mongo_client: AsyncIOMotorClient = None
 db = None
 
 
+async def create_indexes_in_background():
+    """Create indexes in background without blocking startup"""
+    try:
+        await asyncio.sleep(1)  # Wait a moment for server to be ready
+        await db.chat_sessions.create_index("userId")
+        await db.chat_sessions.create_index("updatedAt")
+        print("✅ MongoDB indexes created")
+    except Exception as e:
+        print(f"⚠️ Failed to create indexes: {e}")
+
 @app.on_event("startup")
 async def startup():
     global mongo_client, db
-    mongo_client = AsyncIOMotorClient(MONGODB_URI)
+    mongo_client = AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=3000)
     db = mongo_client["doctor_portal"]
-    # Ensure indexes
-    await db.chat_sessions.create_index("userId")
-    await db.chat_sessions.create_index("updatedAt")
-    print("✅ FastAPI connected to MongoDB")
+    print("✅ FastAPI connecting to MongoDB...")
+    # Create indexes in background (don't block startup)
+    try:
+        asyncio.create_task(create_indexes_in_background())
+    except Exception as e:
+        print(f"⚠️ Could not schedule index creation: {e}")
 
 
 @app.on_event("shutdown")

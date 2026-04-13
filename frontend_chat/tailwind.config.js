@@ -16,7 +16,7 @@ export default {
         }
       },
       fontFamily: {
-        sans: ["Inter", "Outfit", "Segoe UI", "Tahoma", "Geneva", "Verdana", "sans-serif"],
+        sans: ["Inter", "Outfit", "system-ui", "sans-serif"],
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out forwards',

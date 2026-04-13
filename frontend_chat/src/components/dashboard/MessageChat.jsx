@@ -26,10 +26,10 @@ const MessageChat = ({ recipient, messages: initialMessages }) => {
               <User size={36} />
            </div>
            <div>
-              <h3 className="text-2xl font-black text-ayur-forest tracking-tighter uppercase leading-none mb-1">{recipient?.name || 'Practitioner'}</h3>
+              <h3 className="text-2xl font-bold text-slate-900 tracking-tight leading-none mb-1">{recipient?.name || 'Practitioner'}</h3>
               <div className="flex items-center gap-2">
                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-xl shadow-emerald-500/20"></span>
-                 <span className="text-[10px] font-black uppercase tracking-[3px] text-ayur-sage opacity-80">Connected | Secure Session</span>
+                 <span className="text-xs font-bold tracking-tight text-emerald-600">Connected | Secure Session</span>
               </div>
            </div>
         </div>
@@ -41,15 +41,15 @@ const MessageChat = ({ recipient, messages: initialMessages }) => {
             key={msg.id} 
             className={`flex flex-col ${msg.sender === 'patient' ? 'items-end' : 'items-start'} animate-slide-up group/msg`}
           >
-             <div className={`p-6 lg:p-7 rounded-[32px] font-black text-[15px] lg:text-lg shadow-2xl relative transition-all duration-500 max-w-[85%] lg:max-w-[75%] ${
+             className={`p-6 lg:p-7 rounded-2xl font-bold text-base lg:text-lg shadow-lg relative transition-all duration-500 max-w-[85%] lg:max-w-[75%] ${
                msg.sender === 'patient' 
-                 ? 'bg-ayur-forest text-white rounded-br-none shadow-ayur-forest/30 hover:scale-[1.02] transform-gpu' 
-                 : 'bg-white text-ayur-forest rounded-bl-none shadow-slate-100/50 border border-slate-50 hover:scale-[1.02] transform-gpu'
+                 ? 'bg-emerald-600 text-white rounded-br-none shadow-emerald-600/30 hover:scale-[1.02] transform-gpu' 
+                 : 'bg-white text-slate-900 rounded-bl-none shadow-slate-100/50 border border-slate-200 hover:scale-[1.02] transform-gpu'
              }`}>
                {msg.text}
              </div>
              <div className={`flex items-center gap-2 mt-3 px-4 ${msg.sender === 'patient' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <span className="text-[9px] font-black uppercase tracking-[4px] text-slate-300">
+                <span className="text-xs font-bold tracking-tight text-slate-400">
                   {msg.time}
                 </span>
                 {msg.sender === 'patient' && (

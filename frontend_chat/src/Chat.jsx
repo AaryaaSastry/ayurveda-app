@@ -345,8 +345,8 @@ const Chat = () => {
                    </div>
                 </div>
                 <div className="space-y-4 max-w-[500px]">
-                  <h2 className="text-5xl font-black text-black tracking-tighter leading-tight italic">
-                    How are you feeling <span className="text-ayur-sage">today?</span>
+                  <h2 className="text-5xl font-bold text-slate-900 tracking-tight leading-tight">
+                    How are you feeling <span className="text-emerald-600">today?</span>
                   </h2>
                   <p className="text-black font-semibold text-lg opacity-80 leading-relaxed">
                     Start a private consultation with our Ayurvedic AI. We analyze your symptoms through traditional principles and modern data.
@@ -379,10 +379,10 @@ const Chat = () => {
                                 <div className="absolute top-0 right-0 w-24 h-1 bg-emerald-500"></div>
                                 <div className="flex items-center gap-3 text-emerald-600 mb-2">
                                    <ShieldCheck size={18} strokeWidth={2.5} />
-                                   <span className="text-[10px] font-black uppercase tracking-[2px]">Biological Synthesis Verified</span>
+                                   <span className="text-xs font-bold tracking-tight">Biological Synthesis Verified</span>
                                 </div>
-                                <h3 className="text-3xl font-black text-slate-950 uppercase italic tracking-tighter leading-none">{reportData.diagnosis?.name || "Ayurvedic Assessment"}</h3>
-                                <p className="text-slate-600 font-medium text-lg leading-relaxed italic opacity-80 line-clamp-2">
+                                <h3 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">{reportData.diagnosis?.name || 'Ayurvedic Assessment'}</h3>
+                                <p className="text-slate-600 font-medium text-lg leading-relaxed opacity-70 line-clamp-2">
                                    "{reportData.diagnosis?.reasoning || 'Systemic restoration of bodily equilibrium through focused Ayurvedic protocols.'}"
                                 </p>
                               </div>

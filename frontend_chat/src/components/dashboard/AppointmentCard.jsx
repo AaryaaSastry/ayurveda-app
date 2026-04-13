@@ -77,8 +77,8 @@ const AppointmentCard = ({ appointment, onDelete, onChat }) => {
 
             <div className="space-y-6">
                <div className="space-y-2">
-                  <h3 className="text-2xl font-black text-black tracking-tight leading-none group-hover:text-ayur-forest transition-colors uppercase italic">{doctorName}</h3>
-                  <p className="text-[10px] font-black uppercase tracking-[3px] text-black opacity-40">{specialty}</p>
+                  <h3 className="text-2xl font-bold text-slate-900 tracking-tight leading-none group-hover:text-emerald-600 transition-colors">{doctorName}</h3>
+                  <p className="text-xs font-bold tracking-tight text-slate-500">{specialty}</p>
                </div>
 
                <div className="grid grid-cols-2 gap-4 py-6 border-y-2 border-gray-50 mb-4">
@@ -87,7 +87,7 @@ const AppointmentCard = ({ appointment, onDelete, onChat }) => {
                         <Calendar size={14} strokeWidth={2.5} />
                         <span>Date</span>
                      </div>
-                     <span className="font-black text-black text-[15px] tracking-tight truncate block italic">{apptDate}</span>
+                     <span className="font-bold text-slate-900 text-base tracking-tight truncate block">{apptDate}</span>
                   </div>
                   <div className="space-y-2">
                      <div className="flex items-center gap-2 text-black leading-none font-black text-[9px] uppercase tracking-[3px] opacity-30">

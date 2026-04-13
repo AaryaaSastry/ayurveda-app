@@ -114,10 +114,10 @@ const Sidebar = () => {
             <Activity size={22} strokeWidth={2.5} className="group-hover:rotate-6 transition-transform text-emerald-500" />
           </div>
           <div className="flex flex-col">
-            <h1 className="font-black text-black text-[18px] tracking-tight leading-none italic uppercase">AyurCare <span className="text-emerald-600 font-medium lowercase tracking-normal">ai</span></h1>
+            <h1 className="font-black text-slate-900 text-[20px] tracking-tighter leading-none">AyurCare <span className="text-emerald-600 font-medium tracking-normal">ai</span></h1>
             <div className="flex items-center gap-1.5 mt-2">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]"></div>
-              <span className="text-[10px] text-gray-400 font-black uppercase tracking-[3px]">Clinical Portal</span>
+              <span className="text-[10px] text-slate-500 font-bold tracking-tight">Clinical Portal</span>
             </div>
           </div>
         </NavLink>
@@ -134,7 +134,7 @@ const Sidebar = () => {
           className="flex items-center justify-center gap-2.5 w-full py-4 bg-black hover:bg-gray-800 text-white rounded-[22px] transition-all duration-300 shadow-xl shadow-black/10 group relative overflow-hidden active:scale-95"
         >
           <Plus size={18} strokeWidth={3} className="text-emerald-400" />
-          <span className="font-black text-[13px] tracking-[1.5px] uppercase">New Inquiry</span>
+          <span className="font-bold text-sm tracking-tight">New Inquiry</span>
           <Sparkles size={14} className="text-emerald-400 ml-1" />
         </button>
       </div>
@@ -143,7 +143,7 @@ const Sidebar = () => {
       <div className="flex-1 px-5 space-y-10 overflow-y-auto pb-10 custom-scrollbar scroll-smooth">
         {/* Top Links */}
         <nav className="space-y-2">
-          <div className="px-3 mb-4 text-[10px] font-black text-gray-300 uppercase tracking-[4px]">Main Directory</div>
+          <div className="px-3 mb-4 text-xs font-bold text-slate-400 tracking-tight">Main Directory</div>
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
@@ -159,7 +159,7 @@ const Sidebar = () => {
                   <span className={`transition-all duration-300 ${isActive ? 'scale-110 text-emerald-500' : 'group-hover:scale-110 group-hover:text-black'}`}>
                     {item.icon}
                   </span>
-                  <span className="font-black text-[14px] tracking-tight uppercase italic">{item.name}</span>
+                  <span className="font-bold text-sm tracking-tight">{item.name}</span>
                 </div>
                 {isActive && <ChevronRight size={14} strokeWidth={3} className="text-black" />}
               </NavLink>
@@ -170,7 +170,7 @@ const Sidebar = () => {
         {/* Chat Sessions */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-3">
-            <span className="text-[10px] font-black text-gray-300 uppercase tracking-[4px]">Recent Cases</span>
+            <span className="text-xs font-bold text-slate-400 tracking-tight">Recent Cases</span>
           </div>
 
           <div className="space-y-2 invisible-scrollbar font-medium">
@@ -217,7 +217,7 @@ const Sidebar = () => {
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-5 py-3 text-red-500/80 hover:text-red-600 hover:bg-red-50 rounded-[18px] transition-all text-[10px] font-black uppercase tracking-[3px] border border-transparent hover:border-red-100 active:scale-95"
+          className="flex items-center gap-3 w-full px-5 py-3 text-red-500/80 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all text-sm font-bold tracking-tight border border-transparent hover:border-red-100 active:scale-95"
         >
           <LogOut size={16} />
           <span>Terminate Session</span>

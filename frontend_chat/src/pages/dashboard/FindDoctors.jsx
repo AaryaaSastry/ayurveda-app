@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Star, ShieldCheck, Clock, ArrowRight, Filter, Activity, User, Loader2, MessageSquare } from 'lucide-react';
 import { publicApi, patientApi, chatApi, docConnectApi } from '../../services/api';
 import { useNavigate } from 'react-router-dom';

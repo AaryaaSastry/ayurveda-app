@@ -64,11 +64,11 @@ const Appointments = () => {
       <div className="max-w-[1240px] mx-auto space-y-12 pb-20">
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-8 border-b-2 border-gray-100">
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-black font-black uppercase text-[10px] tracking-[4px]">
+            <div className="flex items-center gap-2 text-slate-500 font-bold text-xs tracking-tight">
                <CalendarIcon size={16} strokeWidth={2.5} className="text-emerald-500" />
                <span>Protocol Scheduler</span>
             </div>
-            <h1 className="text-5xl font-black text-black tracking-tighter uppercase italic">Your <span className="text-ayur-sage">Schedule</span></h1>
+            <h1 className="text-5xl font-bold text-slate-900 tracking-tight">Your <span className="text-emerald-600">Schedule</span></h1>
             <p className="text-black font-semibold text-lg opacity-60 leading-tight">Coordinate and track your upcoming health assessments.</p>
           </div>
           
@@ -76,18 +76,18 @@ const Appointments = () => {
              <div className="bg-[#f8faf9] p-1.5 rounded-[18px] flex gap-1 border-2 border-gray-100">
                 <button 
                   onClick={() => setView('grid')}
-                  className={`px-6 py-2.5 rounded-xl transition-all duration-300 text-[10px] font-black uppercase tracking-widest ${view === 'grid' ? 'bg-white text-black shadow-sm ring-2 ring-gray-100' : 'text-gray-400 hover:text-black'}`}
+                  className={`px-6 py-2.5 rounded-lg transition-all duration-300 text-xs font-bold tracking-tight ${view === 'grid' ? 'bg-white text-slate-900 shadow-sm ring-2 ring-slate-200' : 'text-slate-400 hover:text-slate-900'}`}
                 >
                   Grid
                 </button>
                 <button 
                   onClick={() => setView('list')}
-                  className={`px-6 py-2.5 rounded-xl transition-all duration-300 text-[10px] font-black uppercase tracking-widest ${view === 'list' ? 'bg-white text-black shadow-sm ring-2 ring-gray-100' : 'text-gray-400 hover:text-black'}`}
+                  className={`px-6 py-2.5 rounded-lg transition-all duration-300 text-xs font-bold tracking-tight ${view === 'list' ? 'bg-white text-slate-900 shadow-sm ring-2 ring-slate-200' : 'text-slate-400 hover:text-slate-900'}`}
                 >
                    List
                 </button>
              </div>
-             <Link to="/find-doctors" className="flex items-center gap-3 px-10 py-4.5 bg-black text-white rounded-[22px] font-black shadow-xl shadow-black/20 hover:scale-[1.02] active:scale-98 transition-all group leading-none text-[11px] uppercase tracking-[2px]">
+             <Link to="/find-doctors" className="flex items-center gap-3 px-10 py-3 bg-slate-900 text-white rounded-lg font-bold shadow-lg shadow-slate-900/20 hover:bg-slate-800 active:scale-95 transition-all group leading-none text-xs tracking-tight">
                 <PlusCircle size={20} strokeWidth={2.5} className="text-emerald-500" />
                 <span>New Booking</span>
              </Link>
@@ -100,7 +100,7 @@ const Appointments = () => {
                 <div className="w-16 h-16 border-4 border-emerald-500/10 border-t-emerald-500 rounded-full animate-spin"></div>
                 <Activity size={24} className="absolute inset-0 m-auto text-emerald-500 animate-pulse" />
              </div>
-             <p className="text-[10px] font-black uppercase tracking-[4px] text-black">Synchronizing Registry...</p>
+             <p className="text-xs font-bold tracking-tight text-slate-400">Synchronizing Registry...</p>
           </div>
         ) : appointments.length === 0 ? (
           <div className="col-span-full py-40 border-2 border-dashed border-gray-100 rounded-[48px] flex flex-col items-center justify-center text-center space-y-8 bg-[#fcfdfd] shadow-inner">
@@ -130,11 +130,11 @@ const Appointments = () => {
                 <table className="w-full text-left border-collapse">
                    <thead className="bg-[#fcfdfd] border-b-2 border-gray-100">
                       <tr>
-                         <th className="px-8 py-7 font-black uppercase tracking-[3px] text-[10px] text-gray-300">Clinical Practitioner</th>
-                         <th className="px-8 py-7 font-black uppercase tracking-[3px] text-[10px] text-gray-300">Schedule</th>
-                         <th className="px-8 py-7 font-black uppercase tracking-[3px] text-[10px] text-gray-300">Mode</th>
-                         <th className="px-8 py-7 font-black uppercase tracking-[3px] text-[10px] text-gray-300">Status</th>
-                         <th className="px-8 py-7 font-black uppercase tracking-[3px] text-[10px] text-gray-300 text-right">Reference</th>
+                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400">Doctor</th>
+                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400">Date & Time</th>
+                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400">Mode</th>
+                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400">Status</th>
+                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400 text-right">Reference</th>
                       </tr>
                    </thead>
                    <tbody className="divide-y-2 divide-gray-50">
@@ -146,19 +146,19 @@ const Appointments = () => {
                                     <Activity size={20} strokeWidth={2.5} />
                                  </div>
                                  <div>
-                                    <h4 className="font-black text-black text-[16px] tracking-tight uppercase italic truncate max-w-[200px]">Dr. {appt.doctorId?.basicInfo?.name || 'Practitioner'}</h4>
-                                    <span className="text-[10px] font-black text-ayur-sage tracking-[2px] uppercase">{appt.doctorId?.professionalInfo?.specialization || 'Consultant'}</span>
+                                    <h4 className="font-bold text-slate-900 text-base tracking-tight truncate max-w-[200px]">Dr. {appt.doctorId?.basicInfo?.name || 'Practitioner'}</h4>
+                                    <span className="text-xs font-bold text-emerald-600 tracking-tight">{appt.doctorId?.professionalInfo?.specialization || 'Consultant'}</span>
                                  </div>
                               </div>
                            </td>
                            <td className="px-8 py-7">
                               <div className="flex flex-col gap-1">
-                                 <span className="font-black text-black text-[15px] tracking-tight italic">
+                                 <span className="font-bold text-slate-900 text-base tracking-tight">
                                     {appt.startTime 
                                       ? new Date(appt.startTime).toLocaleDateString() 
                                       : new Date(appt.createdAt).toLocaleDateString()}
                                  </span>
-                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                 <span className="text-xs font-bold text-slate-400 tracking-tight">
                                     {formatTime(appt.startTime) || appt.time || 'TBD'}
                                  </span>
                               </div>
@@ -171,16 +171,16 @@ const Appointments = () => {
                                 return (
                                   <div className="flex items-center gap-2">
                                      {isOnline ? <Video size={14} className="text-emerald-500" /> : <MapPin size={14} className="text-emerald-500" />}
-                                     <span className="px-4 py-1.5 bg-[#f0f4f2] text-ayur-forest rounded-xl font-black uppercase tracking-[1.5px] text-[10px] border-2 border-ayur-forest/10 capitalize shadow-inner">{label}</span>
+                                     <span className="px-4 py-1.5 bg-slate-100 text-emerald-600 rounded-lg font-bold tracking-tight text-xs border border-emerald-200 capitalize shadow-sm">{label}</span>
                                   </div>
                                 );
                               })()}
                            </td>
                            <td className="px-8 py-7">
-                              <span className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[2px] border-2 flex items-center gap-2 w-fit ${
+                              <span className={`px-5 py-2.5 rounded-full text-xs font-bold tracking-tight border-2 flex items-center gap-2 w-fit ${
                                 appt.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm shadow-emerald-100' : 
                                 appt.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100 shadow-sm shadow-amber-100' : 
-                                'bg-gray-50 text-gray-400 border-gray-100'
+                                'bg-slate-50 text-slate-400 border-slate-100'
                               }`}>
                                 <div className={`w-1.5 h-1.5 rounded-full ${appt.status === 'confirmed' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
                                 {appt.status}
@@ -196,7 +196,7 @@ const Appointments = () => {
                                  </button>
                                 <button 
                                   onClick={() => setSelectedAppt(appt)}
-                                  className="px-6 py-2.5 bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-[2px] shadow-lg shadow-black/10 hover:shadow-black/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                  className="px-6 py-2.5 bg-slate-900 text-white rounded-lg font-bold text-xs tracking-tight shadow-lg shadow-slate-900/10 hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2"
                                 >
                                    <span>Access</span>
                                    <ChevronRight size={14} strokeWidth={3} />
@@ -238,12 +238,12 @@ const Appointments = () => {
             >
                <div className="space-y-8">
                   <div className="space-y-3">
-                     <div className="flex items-center gap-2 text-black font-black uppercase text-[10px] tracking-[4px]">
+                     <div className="flex items-center gap-2 text-slate-500 font-bold text-xs tracking-tight">
                         {isOnline ? <Video size={16} className="text-emerald-500" /> : <MapPin size={16} className="text-emerald-500" />}
                         <span>{isOnline ? 'Virtual Hub' : 'Physical Clinic'}</span>
                      </div>
-                     <h2 className="text-4xl font-black text-black tracking-tighter uppercase italic leading-none">
-                        {isOnline ? 'Access' : 'Visit'} <span className="text-emerald-500">{isOnline ? 'Session' : 'Hospital'}</span>
+                     <h2 className="text-4xl font-bold text-slate-900 tracking-tight leading-none">
+                        {isOnline ? 'Access' : 'Visit'} <span className="text-emerald-600">{isOnline ? 'Session' : 'Hospital'}</span>
                      </h2>
                   </div>
 
@@ -255,8 +255,8 @@ const Appointments = () => {
                                  <Video size={24} strokeWidth={2.5} />
                               </div>
                               <div>
-                                 <h4 className="font-black text-black uppercase italic text-lg tracking-tight">Google Meet</h4>
-                                 <p className="text-[10px] font-black uppercase tracking-[2px] text-gray-400">Secured Clinical Line</p>
+                                 <h4 className="font-bold text-slate-900 text-lg tracking-tight">Google Meet</h4>
+                                 <p className="text-xs font-bold tracking-tight text-slate-400">Secured Clinical Line</p>
                               </div>
                            </div>
                            
@@ -271,8 +271,8 @@ const Appointments = () => {
                                 <ExternalLink size={16} className="text-emerald-500 group-hover/link:translate-x-1 group-hover/link:-translate-y-1 transition-transform" />
                              </a>
                            ) : (
-                             <div className="p-5 bg-amber-50 border-2 border-amber-100 rounded-2xl">
-                                <p className="text-[10px] font-black uppercase tracking-[1px] text-amber-600 text-center italic">Waiting for practitioner to generate session link...</p>
+                             <div className="p-5 bg-amber-50 border-2 border-amber-100 rounded-lg">
+                                <p className="text-xs font-bold tracking-tight text-amber-600 text-center">Waiting for practitioner to generate session link...</p>
                              </div>
                            )}
                         </div>
@@ -280,10 +280,10 @@ const Appointments = () => {
                         <button 
                           disabled={!selectedAppt.meetingLink}
                           onClick={() => window.open(meetingLink, '_blank')}
-                          className={`w-full py-5 rounded-[22px] font-black uppercase tracking-[3px] text-[12px] flex items-center justify-center gap-4 transition-all shadow-xl ${
+                          className={`w-full py-5 rounded-lg font-bold tracking-tight text-sm flex items-center justify-center gap-4 transition-all shadow-lg ${
                             selectedAppt.meetingLink 
-                              ? 'bg-black text-white hover:scale-[1.02] active:scale-95 shadow-black/20' 
-                              : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                              ? 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95 shadow-slate-900/20' 
+                              : 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
                           }`}
                         >
                            <span>Join Consultation</span>
@@ -299,14 +299,14 @@ const Appointments = () => {
                                     <Navigation size={24} strokeWidth={2.5} />
                                  </div>
                                  <div>
-                                    <h4 className="font-black text-black uppercase italic text-lg tracking-tight">{clinicInfo.clinicName || 'The Wellness Center'}</h4>
-                                    <p className="text-[10px] font-black uppercase tracking-[2px] text-emerald-600">Physical Assessment Hub</p>
+                                    <h4 className="font-bold text-slate-900 text-lg tracking-tight">{clinicInfo.clinicName || 'The Wellness Center'}</h4>
+                                    <p className="text-xs font-bold tracking-tight text-emerald-600">Physical Assessment Hub</p>
                                  </div>
                               </div>
                               
                               <div className="p-6 bg-white border-2 border-gray-100 rounded-2xl space-y-2">
-                                 <p className="text-[13px] font-black text-black leading-tight tracking-tight uppercase italic">{clinicInfo.address}</p>
-                                 <p className="text-[11px] font-black text-gray-400 uppercase tracking-[2px]">{clinicInfo.city}, {clinicInfo.state} {clinicInfo.pincode}</p>
+                                 <p className="text-base font-bold text-slate-900 leading-tight tracking-tight">{clinicInfo.address}</p>
+                                 <p className="text-xs font-bold text-slate-400 tracking-tight">{clinicInfo.city}, {clinicInfo.state} {clinicInfo.pincode}</p>
                               </div>
                            </div>
                         </div>
@@ -315,7 +315,7 @@ const Appointments = () => {
                           href={mapsUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full py-5 bg-black text-white rounded-[22px] font-black uppercase tracking-[3px] text-[12px] flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-black/20"
+                          className="w-full py-5 bg-slate-900 text-white rounded-lg font-bold tracking-tight text-sm flex items-center justify-center gap-4 hover:bg-slate-800 active:scale-95 transition-all shadow-lg shadow-slate-900/20"
                         >
                            <span>View on Google Maps</span>
                            <MapPin size={18} strokeWidth={3} />
@@ -323,7 +323,7 @@ const Appointments = () => {
                      </div>
                   )}
 
-                  <p className="text-center text-[9px] font-black uppercase tracking-[3px] text-gray-300">
+                  <p className="text-center text-xs font-bold tracking-tight text-slate-400">
                      Move cursor away to close
                   </p>
                </div>

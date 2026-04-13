@@ -57,11 +57,11 @@ const ReportCard = ({ report, onView }) => {
                 <FileText size={28} strokeWidth={2.5} />
              </div>
              <div className="flex flex-col items-end gap-2 text-right">
-                <span className="px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-[3px] border-2 border-emerald-100 flex items-center gap-1.5 transition-all">
+                <span className="px-5 py-2 bg-emerald-50 text-emerald-600 rounded-full text-xs font-bold tracking-tight border-2 border-emerald-100 flex items-center gap-1.5 transition-all">
                    <ShieldCheck size={12} strokeWidth={3} />
                    <span>Verified</span>
                 </span>
-                <div className="flex items-center gap-2 text-gray-400 font-black text-[10px] uppercase tracking-[3px] mt-1 mr-2 px-1">
+                <div className="flex items-center gap-2 text-slate-500 font-bold text-xs tracking-tight mt-1 mr-2 px-1">
                    <Calendar size={12} strokeWidth={2.5} />
                    <span>{report.date || new Date(report.createdAt).toLocaleDateString()}</span>
                 </div>
@@ -70,10 +70,10 @@ const ReportCard = ({ report, onView }) => {
           
           <div className="space-y-8">
              <div className="space-y-4">
-                <h3 className="text-3xl font-black text-black tracking-tighter leading-tight uppercase italic group-hover:text-ayur-forest transition-colors line-clamp-2">{report.diagnosis?.name || report.diagnosis}</h3>
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight leading-tight group-hover:text-emerald-700 transition-colors line-clamp-2">{report.diagnosis?.name || report.diagnosis}</h3>
                 <div className="flex flex-wrap gap-2.5 transition-all">
                   {(report.symptoms || "").split(',').filter(Boolean).map((tag, idx) => (
-                    <span key={idx} className="bg-white text-black px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 border-gray-100 shadow-sm">{tag.trim()}</span>
+                    <span key={idx} className="bg-white text-slate-700 px-4 py-1.5 rounded-lg text-xs font-bold tracking-tight border border-slate-200 shadow-sm">{tag.trim()}</span>
                   ))}
                 </div>
              </div>
@@ -82,7 +82,7 @@ const ReportCard = ({ report, onView }) => {
                 <div className="absolute top-4 right-4 text-emerald-500 opacity-20 group-hover:rotate-12 transition-transform duration-500">
                    <TrendingUp size={18} strokeWidth={2.5} />
                 </div>
-                <p className="text-[15px] font-bold text-black leading-relaxed italic pr-6 opacity-60 line-clamp-3">"{report.recommendations || report.doshaRecommendation || 'Nourishing holistic protocol applied.'}"</p>
+                <p className="text-base font-medium text-slate-600 leading-relaxed pr-6 opacity-70 line-clamp-3">\"{ report.recommendations || report.doshaRecommendation || 'Nourishing holistic protocol applied.' }\"</p>
              </div>
           </div>
         </div>
@@ -90,7 +90,7 @@ const ReportCard = ({ report, onView }) => {
         <div className="pt-10 flex gap-4 relative z-10">
            <button 
              onClick={onView}
-             className="flex-1 bg-white border-2 border-black text-black py-5 rounded-2xl font-black uppercase tracking-[3px] text-[11px] shadow-sm hover:bg-black hover:text-white active:scale-95 transition-all flex items-center justify-center gap-3"
+             className="flex-1 bg-white border-2 border-slate-900 text-slate-900 py-4 rounded-xl font-bold tracking-wide text-xs shadow-sm hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center gap-3"
            >
               <Eye size={18} strokeWidth={3} />
               <span>View Full Report</span>
@@ -98,7 +98,7 @@ const ReportCard = ({ report, onView }) => {
            <button 
              onClick={handleDownload}
              disabled={downloading}
-             className="w-20 bg-black text-white py-5 rounded-2xl font-black uppercase tracking-[3px] text-[11px] shadow-xl shadow-black/20 hover:bg-ayur-forest active:scale-95 transition-all flex items-center justify-center disabled:bg-gray-400"
+             className="w-20 bg-slate-900 text-white py-4 rounded-xl font-bold tracking-wide text-xs shadow-lg shadow-slate-900/20 hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center disabled:bg-slate-400"
              title="Download PDF"
            >
               {downloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={20} strokeWidth={3} />}

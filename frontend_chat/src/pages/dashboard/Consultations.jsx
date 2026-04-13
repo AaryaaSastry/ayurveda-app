@@ -73,11 +73,11 @@ const Consultations = () => {
       <div className="max-w-[1240px] mx-auto space-y-12 pb-20">
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-10 pb-8 border-b-2 border-gray-100">
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-black font-black uppercase text-[10px] tracking-[4px]">
+            <div className="flex items-center gap-2 text-slate-500 font-bold text-xs tracking-tight">
                <FileText size={16} strokeWidth={2.5} className="text-emerald-500" />
                <span>Clinical Repository</span>
             </div>
-            <h1 className="text-5xl font-black text-black tracking-tighter uppercase italic">Your AI <span className="text-ayur-sage">Reports</span></h1>
+            <h1 className="text-5xl font-bold text-slate-900 tracking-tight">Your AI <span className="text-emerald-600">Reports</span></h1>
             <p className="text-black font-semibold text-lg opacity-60 leading-tight">Comprehensive synthesis of all biological assessments.</p>
           </div>
           
@@ -87,7 +87,7 @@ const Consultations = () => {
                 <select 
                   value={sortOrder}
                   onChange={(e) => setSortOrder(e.target.value)}
-                  className="pl-12 pr-10 py-4 bg-[#f8faf9] border-2 border-transparent focus:border-black focus:bg-white rounded-2xl outline-none text-sm font-black uppercase tracking-[1px] text-black appearance-none transition-all duration-300 shadow-sm cursor-pointer min-w-[220px]"
+                  className="pl-12 pr-10 py-4 bg-slate-50 border-2 border-transparent focus:border-emerald-600 focus:bg-white rounded-lg outline-none text-sm font-bold tracking-tight text-slate-900 appearance-none transition-all duration-300 shadow-sm cursor-pointer min-w-[220px]"
                 >
                    <option value="newest">Most Recent</option>
                    <option value="oldest">Oldest First</option>
@@ -142,11 +142,11 @@ const Consultations = () => {
           <div className="relative w-full max-w-[600px] h-full bg-white shadow-[-10px_0_40px_rgba(0,0,0,0.1)] flex flex-col animate-slide-in-right">
              <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
                 <div className="space-y-1">
-                   <div className="flex items-center gap-2 text-ayur-sage font-black uppercase text-[10px] tracking-[4px]">
+                   <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs tracking-tight">
                       <FileText size={16} strokeWidth={2.5} />
                       <span>Clinical Assessment</span>
                    </div>
-                   <h3 className="text-2xl font-black text-black italic uppercase tracking-tighter">Full Report</h3>
+                   <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Full Report</h3>
                 </div>
                 <div className="flex items-center gap-3">
                    {fullReportData && (
@@ -171,7 +171,7 @@ const Consultations = () => {
                 {isDetailsLoading ? (
                    <div className="h-full flex flex-col items-center justify-center space-y-4">
                       <Loader2 size={48} className="animate-spin text-ayur-forest" />
-                      <p className="text-[10px] font-black uppercase tracking-[2px] text-gray-400">Synthesizing clinical data...</p>
+                      <p className="text-xs font-bold tracking-tight text-slate-400">Synthesizing clinical data...</p>
                    </div>
                 ) : fullReportData ? (
                    <div className="animate-fade-in">
