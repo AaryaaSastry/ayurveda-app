@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AppointmentCard from '../../components/dashboard/AppointmentCard';
-import { Calendar as CalendarIcon, Filter, Search, PlusCircle, LayoutGrid, List, Activity, Loader2, Video, MapPin, X, ExternalLink, Navigation, ArrowRight, ChevronRight, Trash2 } from 'lucide-react';
+import { Calendar as CalendarIcon, LayoutGrid, List, Activity, Video, MapPin, X, ExternalLink, Navigation, ArrowRight, ChevronRight, Trash2, PlusCircle, Loader2 } from 'lucide-react';
 import { patientApi, docConnectApi } from '../../services/api';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -60,37 +60,39 @@ const Appointments = () => {
   };
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-6 md:px-8 lg:px-12 py-10 bg-white">
-      <div className="max-w-[1240px] mx-auto space-y-12 pb-20">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 pb-8 border-b-2 border-gray-100">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-slate-500 font-bold text-xs tracking-tight">
-               <CalendarIcon size={16} strokeWidth={2.5} className="text-emerald-500" />
-               <span>Protocol Scheduler</span>
+    <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-6 md:px-8 lg:px-12 py-10">
+      <div className="max-w-[1400px] mx-auto space-y-10 pb-20">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-10 pb-6 border-b border-slate-200">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-emerald-600 font-bold uppercase text-[10px] tracking-[2px]">
+              <CalendarIcon size={14} strokeWidth={2.5} />
+              <span>Your Medical Timeline</span>
             </div>
-            <h1 className="text-5xl font-bold text-slate-900 tracking-tight">Your <span className="text-emerald-600">Schedule</span></h1>
-            <p className="text-black font-semibold text-lg opacity-60 leading-tight">Coordinate and track your upcoming health assessments.</p>
+            <h1 className="text-5xl font-bold text-slate-900 tracking-tight">Appointments</h1>
+            <p className="text-slate-600 font-medium text-base leading-snug max-w-2xl">Manage and access all your scheduled health sessions in one place.</p>
           </div>
-          
-          <div className="flex items-center gap-4">
-             <div className="bg-[#f8faf9] p-1.5 rounded-[18px] flex gap-1 border-2 border-gray-100">
-                <button 
-                  onClick={() => setView('grid')}
-                  className={`px-6 py-2.5 rounded-lg transition-all duration-300 text-xs font-bold tracking-tight ${view === 'grid' ? 'bg-white text-slate-900 shadow-sm ring-2 ring-slate-200' : 'text-slate-400 hover:text-slate-900'}`}
-                >
-                  Grid
-                </button>
-                <button 
-                  onClick={() => setView('list')}
-                  className={`px-6 py-2.5 rounded-lg transition-all duration-300 text-xs font-bold tracking-tight ${view === 'list' ? 'bg-white text-slate-900 shadow-sm ring-2 ring-slate-200' : 'text-slate-400 hover:text-slate-900'}`}
-                >
-                   List
-                </button>
-             </div>
-             <Link to="/find-doctors" className="flex items-center gap-3 px-10 py-3 bg-slate-900 text-white rounded-lg font-bold shadow-lg shadow-slate-900/20 hover:bg-slate-800 active:scale-95 transition-all group leading-none text-xs tracking-tight">
-                <PlusCircle size={20} strokeWidth={2.5} className="text-emerald-500" />
-                <span>New Booking</span>
-             </Link>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1.5 border border-slate-200">
+              <button 
+                onClick={() => setView('grid')}
+                className={`p-2.5 rounded-lg transition-all duration-300 ${view === 'grid' ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-900'}`}
+                title="Grid view"
+              >
+                <LayoutGrid size={20} strokeWidth={2.5} />
+              </button>
+              <button 
+                onClick={() => setView('list')}
+                className={`p-2.5 rounded-lg transition-all duration-300 ${view === 'list' ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-900'}`}
+                title="List view"
+              >
+                <List size={20} strokeWidth={2.5} />
+              </button>
+            </div>
+            <Link to="/find-doctors" className="flex items-center gap-2 px-12 py-2.5 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all text-xs tracking-tight">
+              <PlusCircle size={16} strokeWidth={2.5} />
+              <span>Book Now</span>
+            </Link>
           </div>
         </header>
 
@@ -100,128 +102,46 @@ const Appointments = () => {
                 <div className="w-16 h-16 border-4 border-emerald-500/10 border-t-emerald-500 rounded-full animate-spin"></div>
                 <Activity size={24} className="absolute inset-0 m-auto text-emerald-500 animate-pulse" />
              </div>
-             <p className="text-xs font-bold tracking-tight text-slate-400">Synchronizing Registry...</p>
+             <p className="text-xs font-bold tracking-tight text-slate-400">Loading appointments...</p>
           </div>
         ) : appointments.length === 0 ? (
-          <div className="col-span-full py-40 border-2 border-dashed border-gray-100 rounded-[48px] flex flex-col items-center justify-center text-center space-y-8 bg-[#fcfdfd] shadow-inner">
-             <div className="w-24 h-24 bg-white border-2 border-gray-100 rounded-[400px] flex items-center justify-center text-gray-100 shadow-sm">
+          <div className="py-40 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center space-y-8 bg-slate-50 shadow-inner">
+             <div className="w-24 h-24 bg-white border-2 border-slate-200 rounded-full flex items-center justify-center text-slate-300 shadow-sm">
                 <CalendarIcon size={48} strokeWidth={2.5} />
              </div>
              <div className="space-y-2">
-               <h3 className="text-2xl font-black text-black uppercase italic tracking-tight">Zero Protocols Active</h3>
-               <p className="text-gray-400 font-bold text-[13px] uppercase tracking-widest leading-relaxed">No medical sessions are currently scheduled in the system.</p>
+               <h3 className="text-2xl font-bold text-slate-900 tracking-tight">No Appointments Scheduled</h3>
+               <p className="text-slate-500 font-medium text-sm">Begin by booking your first health session.</p>
              </div>
-             <Link to="/find-doctors" className="px-12 py-4 bg-black text-white rounded-[22px] font-black shadow-xl shadow-black/20 uppercase tracking-[3px] text-[11px] hover:scale-105 transition-all">Engage Network</Link>
+             <Link to="/find-doctors" className="px-12 py-3 bg-slate-900 text-white rounded-lg font-bold shadow-lg shadow-slate-900/20 tracking-tight text-sm hover:bg-black active:scale-95 transition-all">Find a Doctor</Link>
           </div>
         ) : view === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
              {appointments.map(appt => (
                <AppointmentCard 
                  key={appt._id} 
                  appointment={appt} 
                  onDelete={handleDeleteAppointment}
                  onChat={() => handleOpenChat(appt.doctorId?._id || appt.doctorId)}
+                 isListView={false}
                />
              ))}
           </div>
         ) : (
-          <div className="bg-white rounded-[32px] border-2 border-gray-100 overflow-hidden shadow-sm">
-             <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                   <thead className="bg-[#fcfdfd] border-b-2 border-gray-100">
-                      <tr>
-                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400">Doctor</th>
-                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400">Date & Time</th>
-                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400">Mode</th>
-                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400">Status</th>
-                         <th className="px-8 py-7 font-bold tracking-tight text-xs text-slate-400 text-right">Reference</th>
-                      </tr>
-                   </thead>
-                   <tbody className="divide-y-2 divide-gray-50">
-                      {appointments.map(appt => (
-                        <tr key={appt._id} className="hover:bg-[#f8faf9] transition-colors group">
-                           <td className="px-8 py-7">
-                              <div className="flex items-center gap-5">
-                                 <div className="w-12 h-12 rounded-xl bg-white border-2 border-gray-100 flex items-center justify-center text-black shadow-inner group-hover:border-ayur-forest/20 transition-all">
-                                    <Activity size={20} strokeWidth={2.5} />
-                                 </div>
-                                 <div>
-                                    <h4 className="font-bold text-slate-900 text-base tracking-tight truncate max-w-[200px]">Dr. {appt.doctorId?.basicInfo?.name || 'Practitioner'}</h4>
-                                    <span className="text-xs font-bold text-emerald-600 tracking-tight">{appt.doctorId?.professionalInfo?.specialization || 'Consultant'}</span>
-                                 </div>
-                              </div>
-                           </td>
-                           <td className="px-8 py-7">
-                              <div className="flex flex-col gap-1">
-                                 <span className="font-bold text-slate-900 text-base tracking-tight">
-                                    {appt.startTime 
-                                      ? new Date(appt.startTime).toLocaleDateString() 
-                                      : new Date(appt.createdAt).toLocaleDateString()}
-                                 </span>
-                                 <span className="text-xs font-bold text-slate-400 tracking-tight">
-                                    {formatTime(appt.startTime) || appt.time || 'TBD'}
-                                 </span>
-                              </div>
-                           </td>
-                           <td className="px-8 py-7">
-                              {(() => {
-                                const type = (appt.type || appt.appointmentType || 'online').toLowerCase();
-                                const isOnline = type === 'online';
-                                const label = isOnline ? 'Virtual' : (type === 'clinic' ? 'Clinical' : 'Follow-up');
-                                return (
-                                  <div className="flex items-center gap-2">
-                                     {isOnline ? <Video size={14} className="text-emerald-500" /> : <MapPin size={14} className="text-emerald-500" />}
-                                     <span className="px-4 py-1.5 bg-slate-100 text-emerald-600 rounded-lg font-bold tracking-tight text-xs border border-emerald-200 capitalize shadow-sm">{label}</span>
-                                  </div>
-                                );
-                              })()}
-                           </td>
-                           <td className="px-8 py-7">
-                              <span className={`px-5 py-2.5 rounded-full text-xs font-bold tracking-tight border-2 flex items-center gap-2 w-fit ${
-                                appt.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm shadow-emerald-100' : 
-                                appt.status === 'pending' ? 'bg-amber-50 text-amber-600 border-amber-100 shadow-sm shadow-amber-100' : 
-                                'bg-slate-50 text-slate-400 border-slate-100'
-                              }`}>
-                                <div className={`w-1.5 h-1.5 rounded-full ${appt.status === 'confirmed' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></div>
-                                {appt.status}
-                              </span>
-                           </td>
-                           <td className="px-8 py-7 text-right">
-                              <div className="flex items-center justify-end gap-3 opacity-20 group-hover:opacity-100 transition-opacity">
-                                 <button 
-                                   onClick={() => handleOpenChat(appt.doctorId?._id || appt.doctorId)}
-                                   className="p-2.5 bg-white border-2 border-gray-100 text-indigo-500 hover:text-indigo-600 hover:border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm"
-                                 >
-                                    <MessageSquare size={16} strokeWidth={3} />
-                                 </button>
-                                <button 
-                                  onClick={() => setSelectedAppt(appt)}
-                                  className="px-6 py-2.5 bg-slate-900 text-white rounded-lg font-bold text-xs tracking-tight shadow-lg shadow-slate-900/10 hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-2"
-                                >
-                                   <span>Access</span>
-                                   <ChevronRight size={14} strokeWidth={3} />
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    if (window.confirm('Hide this appointment?')) handleDeleteAppointment(appt._id);
-                                  }}
-                                  className="p-2.5 bg-white border-2 border-gray-100 text-gray-400 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-all shadow-sm"
-                                  title="Hide"
-                                >
-                                   <Trash2 size={16} strokeWidth={3} />
-                                </button>
-                              </div>
-                           </td>
-                        </tr>
-                      ))}
-                   </tbody>
-                </table>
-             </div>
+          <div className="space-y-4">
+             {appointments.map(appt => (
+               <AppointmentCard 
+                 key={appt._id} 
+                 appointment={appt} 
+                 onDelete={handleDeleteAppointment}
+                 onChat={() => handleOpenChat(appt.doctorId?._id || appt.doctorId)}
+                 isListView={true}
+               />
+             ))}
           </div>
         )}
-      </div>
 
-      {/* Shared Session Access Modal */}
+        {/* Shared Session Access Modal */}
       {selectedAppt && (() => {
         const type = (selectedAppt.type || selectedAppt.appointmentType || 'online').toLowerCase();
         const isOnline = type === 'online';
@@ -331,6 +251,7 @@ const Appointments = () => {
           </div>
         );
       })()}
+      </div>
     </div>
   );
 };

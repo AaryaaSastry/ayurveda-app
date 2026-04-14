@@ -292,7 +292,7 @@ const Chat = () => {
                     const reportData = extractReportJson(activeSession?.diagnosis);
                     if (reportData) downloadMedicalReportPDF(reportData);
                   }}
-                  className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-gray-200 text-black rounded-[12px] text-[10px] font-black uppercase tracking-[1px] shadow-sm hover:border-black active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
                   title="Download Report"
                 >
                   <Download size={14} strokeWidth={2.5} />
@@ -302,20 +302,20 @@ const Chat = () => {
              {diagnosisCompleted && (
                 <button
                   onClick={handleRecipes}
-                  className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-gray-200 text-black rounded-[12px] text-[10px] font-black uppercase tracking-[1px] shadow-sm hover:border-black active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
                   title="View Wellness Plan"
                 >
-                  <Sparkles size={14} className="text-emerald-500" />
+                  <Sparkles size={14} className="text-emerald-600" />
                   <span>Plan</span>
                 </button>
              )}
              {diagnosisCompleted && (
                 <button
                   onClick={() => setActiveSidePanel('doctors')}
-                  className="flex items-center gap-2 px-3 py-2 bg-white border-2 border-gray-200 text-black rounded-[12px] text-[10px] font-black uppercase tracking-[1px] shadow-sm hover:border-black active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
                   title="Recommended Doctors"
                 >
-                  <Stethoscope size={14} className="text-blue-500" />
+                  <Stethoscope size={14} className="text-blue-600" />
                   <span>Doctors</span>
                 </button>
              )}
@@ -337,7 +337,7 @@ const Chat = () => {
             ) : (!activeSession?.messages || activeSession.messages.length === 0) ? (
               <div className="py-20 flex flex-col items-center text-center space-y-10 animate-fade-in">
                 <div className="relative">
-                   <div className="w-24 h-24 bg-white rounded-[32px] shadow-2xl border border-gray-100 flex items-center justify-center text-ayur-sage transform -rotate-3 transition-transform hover:rotate-0">
+                   <div className="w-24 h-24 bg-white rounded-[32px] shadow-2xl border border-slate-200 flex items-center justify-center text-emerald-600 transform -rotate-3 transition-transform hover:rotate-0">
                      <Activity size={48} />
                    </div>
                    <div className="absolute -top-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center">
@@ -357,7 +357,7 @@ const Chat = () => {
                       <button 
                         key={tip}
                         onClick={() => { setInput(tip); inputRef.current?.focus(); }}
-                        className="px-6 py-4 bg-white border border-gray-100 rounded-[20px] text-[13px] font-bold text-ayur-forest hover:border-ayur-sage hover:bg-emerald-50/30 transition-all text-left shadow-sm group"
+                        className="px-6 py-4 bg-white border border-emerald-200 rounded-[20px] text-[13px] font-bold text-emerald-600 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all text-left shadow-sm group"
                       >
                          <span className="opacity-40 group-hover:opacity-100 transition-opacity mr-2">✦</span>
                          {tip}
@@ -389,24 +389,24 @@ const Chat = () => {
                               <div className="flex flex-wrap justify-center gap-4">
                                 <button
                                   onClick={() => downloadMedicalReportPDF(reportData)}
-                                  className="flex items-center gap-2.5 px-6 py-3.5 bg-white border-2 border-gray-200 text-black rounded-[14px] text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:border-black transition-all active:scale-95"
+                                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
                                 >
                                   <Download size={16} strokeWidth={3} />
-                                  <span>Download Report</span>
+                                  <span>Download</span>
                                 </button>
                                 <button
                                   onClick={handleRecipes}
-                                  className="flex items-center gap-2.5 px-6 py-3.5 bg-white border-2 border-gray-200 text-black rounded-[14px] text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:border-black transition-all active:scale-95"
+                                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
                                 >
-                                  <Sparkles size={16} fill="currentColor" className="text-emerald-500" />
-                                  <span>View Wellness Plan</span>
+                                  <Sparkles size={16} fill="currentColor" className="text-emerald-600" />
+                                  <span>Wellness Plan</span>
                                 </button>
                                 <button
                                   onClick={() => setActiveSidePanel('doctors')}
-                                  className="flex items-center gap-2.5 px-6 py-3.5 bg-white border-2 border-gray-200 text-black rounded-[14px] text-[10px] font-black uppercase tracking-[2px] shadow-sm hover:border-black transition-all active:scale-95"
+                                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
                                 >
-                                  <Stethoscope size={16} fill="currentColor" className="text-blue-500" />
-                                  <span>Recommended Doctors</span>
+                                  <Stethoscope size={16} fill="currentColor" className="text-blue-600" />
+                                  <span>Doctors</span>
                                 </button>
                               </div>
                             </div>
@@ -424,7 +424,7 @@ const Chat = () => {
                     })()
                   ) : (
                     <div className={`flex gap-6 max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                      <div className={`w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center shadow-md border-2 transition-transform hover:scale-105 ${msg.role === 'user' ? 'bg-[#edf3f0] border-black text-black' : 'bg-white border-gray-200 text-ayur-sage'}`}>
+                      <div className={`w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center shadow-md border-2 transition-transform hover:scale-105 ${msg.role === 'user' ? 'bg-slate-100 border-slate-200 text-slate-900' : 'bg-white border-slate-200 text-emerald-600'}`}>
                         {msg.role === 'user' ? (
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-90">
                             <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
@@ -433,11 +433,16 @@ const Chat = () => {
                         ) : <Bot size={20} strokeWidth={2.5} />}
                       </div>
                       <div className={`flex flex-col gap-2.5 ${msg.role === 'user' ? 'items-end' : ''}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${msg.role === 'user' ? 'text-slate-400' : 'text-emerald-500'}`}>
+                            {msg.role === 'user' ? `User ${userId?.toString().slice(-4) || '1'}` : `Doc AI`}
+                          </span>
+                        </div>
                         <div className={`rounded-[22px] text-[15px] leading-relaxed font-normal shadow-sm max-w-full overflow-hidden ${msg.role === 'user'
-                          ? 'bg-[#edf3f0] text-black border-2 border-transparent rounded-tr-none px-6 py-4.5'
+                          ? 'bg-slate-100 text-slate-900 border-2 border-transparent rounded-tr-none px-6 py-4.5'
                           : msg.isThinking 
-                            ? 'bg-white border-2 border-gray-200 text-black rounded-tl-none px-5 py-4'
-                            : 'bg-white border-2 border-gray-200 text-black rounded-tl-none px-6 py-4.5'
+                            ? 'bg-white border-2 border-slate-200 text-slate-900 rounded-tl-none px-5 py-4'
+                            : 'bg-white border-2 border-slate-200 text-slate-900 rounded-tl-none px-6 py-4.5'
                           }`}>
                           {msg.isThinking ? (
                             <div className="flex gap-1.5 items-center justify-center">
@@ -504,7 +509,7 @@ const Chat = () => {
               </div>
               <h3 className="text-2xl font-black text-ayur-forest capitalize tracking-tight">{activeSidePanel === 'recipes' ? 'Wellness Plan' : 'Recommended Doctors'}</h3>
             </div>
-            <button onClick={() => setActiveSidePanel(null)} className="w-10 h-10 flex items-center justify-center text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-2xl transition-all active:scale-90">
+            <button onClick={() => setActiveSidePanel(null)} className="w-10 h-10 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-2xl transition-all active:scale-90">
               <X size={24} />
             </button>
           </div>

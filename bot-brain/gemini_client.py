@@ -8,7 +8,11 @@ Priority:
 """
 
 import os
+import time
+from contextvars import ContextVar
 from typing import Optional
+
+_trace_var: ContextVar[list] = ContextVar("llm_trace", default=[])
 
 
 def _local_fallback(prompt: str) -> str:
@@ -20,10 +24,25 @@ def _local_fallback(prompt: str) -> str:
     )
 
 
+def reset_trace() -> None:
+    _trace_var.set([])
+
+
+def get_trace_snapshot() -> list:
+    return list(_trace_var.get())
+
+
+def _append_trace(entry: dict) -> None:
+    current = list(_trace_var.get())
+    current.append(entry)
+    _trace_var.set(current)
+
+
 def send(prompt: str, max_tokens: int = 256, model: Optional[str] = None) -> str:
     """
     Send prompt to an LLM and return a text reply.
     """
+    start = time.perf_counter()
 
     # ==========================
     # 1️⃣ GEMINI
@@ -50,6 +69,14 @@ def send(prompt: str, max_tokens: int = 256, model: Optional[str] = None) -> str
             )
 
             if hasattr(response, "text") and response.text:
+                elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
+                _append_trace({
+                    "provider": "gemini",
+                    "model": model_name,
+                    "latency_ms": elapsed_ms,
+                    "prompt_chars": len(prompt),
+                    "success": True,
+                })
                 return response.text.strip()
 
     except Exception:
@@ -65,8 +92,9 @@ def send(prompt: str, max_tokens: int = 256, model: Optional[str] = None) -> str
         if key:
             openai.api_key = key
 
+            model_name = model or "gpt-4o-mini"
             response = openai.ChatCompletion.create(
-                model=model or "gpt-4o-mini",
+                model=model_name,
                 messages=[
                     {"role": "system", "content": "You are a warm Ayurvedic assistant."},
                     {"role": "user", "content": prompt},
@@ -74,6 +102,14 @@ def send(prompt: str, max_tokens: int = 256, model: Optional[str] = None) -> str
                 max_tokens=max_tokens,
             )
 
+            elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
+            _append_trace({
+                "provider": "openai",
+                "model": model_name,
+                "latency_ms": elapsed_ms,
+                "prompt_chars": len(prompt),
+                "success": True,
+            })
             return response.choices[0].message["content"].strip()
 
     except Exception:
@@ -82,4 +118,12 @@ def send(prompt: str, max_tokens: int = 256, model: Optional[str] = None) -> str
     # ==========================
     # 3️⃣ FINAL FALLBACK
     # ==========================
+    elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
+    _append_trace({
+        "provider": "local_fallback",
+        "model": "deterministic",
+        "latency_ms": elapsed_ms,
+        "prompt_chars": len(prompt),
+        "success": True,
+    })
     return _local_fallback(prompt)

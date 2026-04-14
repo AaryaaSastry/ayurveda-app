@@ -87,7 +87,7 @@ const Auth = () => {
 
           {error && <div className="auth-error">{error}</div>}
 
-          <button type="submit" className="auth-submit-btn" disabled={isLoading}>
+          <button type="submit" className="auth-submit-btn bg-emerald-600 text-white" disabled={isLoading}>
             {isLoading ? (
               <span className="loader"></span>
             ) : (

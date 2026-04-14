@@ -113,4 +113,4 @@ function ReportRenderer({ report }) {
   )
 }
 
-export default ReportRenderer
+export default ReportRenderer;

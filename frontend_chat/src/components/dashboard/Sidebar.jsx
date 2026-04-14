@@ -131,7 +131,7 @@ const Sidebar = () => {
             navigate('/chat', { state: { forceNew: true } });
             window.dispatchEvent(new CustomEvent('new-session-requested'));
           }}
-          className="flex items-center justify-center gap-2.5 w-full py-4 bg-black hover:bg-gray-800 text-white rounded-[22px] transition-all duration-300 shadow-xl shadow-black/10 group relative overflow-hidden active:scale-95"
+          className="flex items-center justify-center gap-2.5 w-full py-3 bg-slate-900 hover:bg-black text-white rounded-lg transition-all duration-300 shadow-lg shadow-slate-900/20 group relative overflow-hidden active:scale-95"
         >
           <Plus size={18} strokeWidth={3} className="text-emerald-400" />
           <span className="font-bold text-sm tracking-tight">New Inquiry</span>
@@ -150,7 +150,7 @@ const Sidebar = () => {
               <NavLink
                 key={item.name}
                 to={item.path}
-                className={`flex items-center justify-between px-5 py-3.5 rounded-[18px] transition-all duration-300 group border-2 ${isActive
+                className={`flex items-center justify-between px-5 py-3 rounded-lg transition-all duration-300 group border-2 ${isActive
                   ? 'bg-white border-black text-black shadow-lg shadow-gray-100'
                   : 'text-gray-400 border-transparent hover:bg-[#f8faf9] hover:text-black hover:border-gray-100'
                   }`}
@@ -180,7 +180,7 @@ const Sidebar = () => {
                 <NavLink
                   key={session._id}
                   to={`/chat/${session._id}`}
-                  className={`flex items-center justify-between px-4 py-3.5 rounded-[18px] transition-all duration-300 group relative border-2 ${isActive
+                  className={`flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-300 group relative border-2 ${isActive
                     ? 'bg-white border-black text-black shadow-sm'
                     : 'text-gray-400 border-transparent hover:bg-[#f8faf9] hover:border-gray-100 hover:text-black'
                     }`}

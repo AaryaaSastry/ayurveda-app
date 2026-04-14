@@ -63,7 +63,7 @@ const MessageChat = ({ recipient, messages: initialMessages }) => {
       <div className="p-8 lg:px-10 pb-10 bg-white/40 backdrop-blur-md border-t border-white shadow-[0_-20px_50px_-10px_rgba(31,42,38,0.05)]">
         <form onSubmit={handleSendMessage} className="flex items-center gap-4 bg-white p-3 rounded-[32px] border-4 border-slate-50 shadow-2xl shadow-slate-200/50 group/form transition-all duration-500 hover:shadow-slate-200/80">
           <div className="hidden sm:flex gap-1 pl-2">
-             <button type="button" className="w-12 h-12 bg-slate-50 text-slate-300 hover:text-ayur-sage rounded-2xl flex items-center justify-center transition-all group-hover/form:scale-110">
+             <button type="button" className="w-12 h-12 bg-slate-50 text-slate-300 hover:text-emerald-600 rounded-2xl flex items-center justify-center transition-all group-hover/form:scale-110">
                 <Paperclip size={20} />
              </button>
           </div>
@@ -77,7 +77,7 @@ const MessageChat = ({ recipient, messages: initialMessages }) => {
           <button 
            type="submit"
            disabled={!newMessage.trim()}
-           className="w-16 h-16 bg-ayur-forest text-white rounded-[24px] flex items-center justify-center disabled:opacity-30 disabled:grayscale transition-all shadow-xl shadow-ayur-forest/20 active:scale-95 group/send"
+           className="w-16 h-16 bg-emerald-600 text-white rounded-[24px] flex items-center justify-center disabled:opacity-30 disabled:grayscale transition-all shadow-xl shadow-emerald-600/20 active:scale-95 group/send hover:bg-emerald-700"
           >
            <Send size={24} className="group-hover/send:translate-x-1 group-hover/send:-translate-y-1 transition-transform" strokeWidth={3} />
          </button>

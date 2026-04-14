@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReportCard from '../../components/dashboard/ReportCard';
-import { Search, Filter, SlidersHorizontal, Activity, FileText, ChevronRight, Loader2, X, Download } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, Activity, FileText, ChevronRight, Loader2, X, Download, Grid3x3, List } from 'lucide-react';
 import { patientApi, chatApi } from '../../services/api';
 import { Link } from 'react-router-dom';
 import ReportRenderer from '../../ReportRenderer';
@@ -10,6 +10,7 @@ const Consultations = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState('newest'); // 'newest' or 'oldest'
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [fullReportData, setFullReportData] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -69,62 +70,98 @@ const Consultations = () => {
   });
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-6 md:px-8 lg:px-12 py-10 bg-white">
-      <div className="max-w-[1240px] mx-auto space-y-12 pb-20">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-10 pb-8 border-b-2 border-gray-100">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-slate-500 font-bold text-xs tracking-tight">
-               <FileText size={16} strokeWidth={2.5} className="text-emerald-500" />
-               <span>Clinical Repository</span>
+    <div className="h-full overflow-y-auto custom-scrollbar px-4 sm:px-6 md:px-8 lg:px-12 py-8">
+      <div className="max-w-[1240px] mx-auto space-y-8 pb-20">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-10 pb-4 border-b border-slate-200">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-emerald-600 font-bold uppercase text-[10px] tracking-[2px]">
+              <FileText size={14} strokeWidth={2.5} />
+              <span>Clinical Repository</span>
             </div>
-            <h1 className="text-5xl font-bold text-slate-900 tracking-tight">Your AI <span className="text-emerald-600">Reports</span></h1>
-            <p className="text-black font-semibold text-lg opacity-60 leading-tight">Comprehensive synthesis of all biological assessments.</p>
+            <h1 className="text-4xl font-bold text-slate-900 tracking-tight">Your AI Reports</h1>
+            <p className="text-slate-600 font-medium text-sm leading-snug">Comprehensive synthesis of all biological assessments.</p>
           </div>
-          
-          <div className="flex items-center gap-4">
-             <div className="relative group/sort">
-                <SlidersHorizontal className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within/sort:text-black transition-colors" size={18} strokeWidth={2.5} />
-                <select 
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="pl-12 pr-10 py-4 bg-slate-50 border-2 border-transparent focus:border-emerald-600 focus:bg-white rounded-lg outline-none text-sm font-bold tracking-tight text-slate-900 appearance-none transition-all duration-300 shadow-sm cursor-pointer min-w-[220px]"
-                >
-                   <option value="newest">Most Recent</option>
-                   <option value="oldest">Oldest First</option>
-                </select>
-                <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                   <ChevronRight size={16} strokeWidth={3} className="rotate-90" />
-                </div>
-             </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                title="Grid view"
+              >
+                <Grid3x3 size={18} strokeWidth={2.5} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
+                title="List view"
+              >
+                <List size={18} strokeWidth={2.5} />
+              </button>
+            </div>
+            
+            <div className="relative group/sort">
+              <SlidersHorizontal className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/sort:text-slate-900 transition-colors" size={18} strokeWidth={2.5} />
+              <select 
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="pl-12 pr-10 py-2.5 bg-slate-50 border border-slate-200 focus:border-emerald-600 focus:bg-white rounded-lg outline-none text-sm font-bold tracking-tight text-slate-900 appearance-none transition-all duration-300 shadow-sm cursor-pointer min-w-[180px]"
+              >
+                <option value="newest">Most Recent</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+              <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <ChevronRight size={16} strokeWidth={3} className="rotate-90" />
+              </div>
+            </div>
           </div>
         </header>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-             {[1,2,3].map(i => <div key={i} className="h-80 bg-[#f8faf9] border-2 border-gray-100 rounded-[32px] animate-pulse"></div>)}
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1,2,3].map(i => <div key={i} className="h-96 bg-slate-100 border border-slate-200 rounded-[40px] animate-pulse"></div>)}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {[1,2,3].map(i => <div key={i} className="h-20 bg-slate-100 border border-slate-200 rounded-lg animate-pulse"></div>)}
+            </div>
+          )
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedReports.map(report => (
+              <ReportCard key={report._id} report={report} onView={() => openReportDrawer(report)} isListView={false} />
+            ))}
+            
+            {sortedReports.length === 0 && (
+              <div className="col-span-full py-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[48px] flex flex-col items-center justify-center text-center space-y-4 animate-fade-in shadow-inner">
+                <FileText size={64} className="text-slate-200" />
+                <h3 className="text-2xl font-bold text-slate-900">No Reports Found</h3>
+                <p className="text-slate-500 font-medium max-w-[320px]">You haven't completed any clinical consultations yet. Start by beginning a new synthesis.</p>
+                <Link to="/chat" className="mt-4 bg-slate-900 text-white px-12 py-3 rounded-3xl font-bold tracking-widest text-sm shadow-lg shadow-slate-900/20 hover:bg-black active:scale-95 transition-all flex items-center gap-2">
+                  <span>Begin Synthesis</span>
+                  <Activity size={16} strokeWidth={3} className="text-emerald-500" />
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {sortedReports.map(report => (
-                <ReportCard key={report._id} report={report} onView={() => openReportDrawer(report)} />
-              ))}
-              
-              {sortedReports.length === 0 && (
-                <div className="col-span-full py-32 flex flex-col items-center justify-center text-center space-y-8 bg-[#fcfdfd] border-2 border-dashed border-gray-100 rounded-[48px] animate-fade-in shadow-inner">
-                   <div className="relative w-28 h-28 bg-white border-2 border-gray-100 rounded-[40px] flex items-center justify-center text-gray-100 shadow-sm">
-                      <FileText size={64} className="opacity-5 scale-125" />
-                      <Activity size={32} className="absolute text-emerald-500" strokeWidth={2.5} />
-                   </div>
-                   <div className="space-y-2">
-                      <h3 className="text-2xl font-black text-black uppercase italic tracking-tight">No Reports Found</h3>
-                      <p className="text-gray-400 font-bold text-[13px] uppercase tracking-widest leading-relaxed">You haven't completed any clinical consultations yet.</p>
-                   </div>
-                   <Link to="/chat" className="bg-black text-white px-12 py-4 rounded-[22px] font-black uppercase tracking-[3px] text-[11px] shadow-xl shadow-black/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-4">
-                      <span>Begin Synthesis</span>
-                      <Activity size={16} strokeWidth={3} className="text-emerald-500" />
-                   </Link>
-                </div>
-             )}
+          <div className="space-y-3">
+            {sortedReports.map(report => (
+              <ReportCard key={report._id} report={report} onView={() => openReportDrawer(report)} isListView={true} />
+            ))}
+            
+            {sortedReports.length === 0 && (
+              <div className="py-40 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[48px] flex flex-col items-center justify-center text-center space-y-4 animate-fade-in shadow-inner">
+                <FileText size={64} className="text-slate-200" />
+                <h3 className="text-2xl font-bold text-slate-900">No Reports Found</h3>
+                <p className="text-slate-500 font-medium max-w-[320px]">You haven't completed any clinical consultations yet. Start by beginning a new synthesis.</p>
+                <Link to="/chat" className="mt-4 bg-slate-900 text-white px-12 py-3 rounded-3xl font-bold tracking-widest text-sm shadow-lg shadow-slate-900/20 hover:bg-black active:scale-95 transition-all flex items-center gap-2">
+                  <span>Begin Synthesis</span>
+                  <Activity size={16} strokeWidth={3} className="text-emerald-500" />
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </div>

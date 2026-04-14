@@ -4,12 +4,13 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 from bson.errors import InvalidId
 from datetime import datetime, timezone
+from time import perf_counter
 import json
 import os
 import asyncio
 from dotenv import load_dotenv
 from bot import extract_symptoms_from_text, get_next_question, diagnose, should_give_diagnosis
-from gemini_client import send
+from gemini_client import send, reset_trace, get_trace_snapshot
 
 load_dotenv()
 
@@ -91,6 +92,23 @@ def serialize_session(doc: dict) -> dict:
 
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _timing_entry(stage: str, start_time: float) -> dict:
+    return {"stage": stage, "latency_ms": round((perf_counter() - start_time) * 1000, 2)}
+
+
+def _build_telemetry(timings: list) -> dict:
+    llm_trace = get_trace_snapshot()
+    llm_total = round(sum(item.get("latency_ms", 0) for item in llm_trace), 2)
+    total = round(sum(item.get("latency_ms", 0) for item in timings), 2)
+    return {
+        "timings": timings,
+        "llm_calls": len(llm_trace),
+        "llm_total_ms": llm_total,
+        "llm_trace": llm_trace,
+        "measured_total_ms": total,
+    }
 
 
 # ─── Chat Session CRUD endpoints ──────────────────────────────────────────────
@@ -206,6 +224,9 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
     session_id = user_id  # frontend sends ?user_id=<sessionId>
     message = data.get("message", "")
     diagnosis_context = data.get("diagnosis", "")
+    timings = []
+    request_start = perf_counter()
+    reset_trace()
 
     # Load/init AI state for this session
     ai_state = get_ai_session(session_id)
@@ -213,8 +234,10 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
     # If session_id looks like a MongoDB ObjectId, try to restore AI state from DB
     if len(session_id) == 24:
         try:
+            db_restore_start = perf_counter()
             session_oid = ObjectId(session_id)
             db_session = await db.chat_sessions.find_one({"_id": session_oid})
+            timings.append(_timing_entry("db_restore_session", db_restore_start))
             if db_session and not ai_state["conversation_history"]:
                 # Restore history from stored messages so AI has context
                 for msg in db_session.get("messages", []):
@@ -228,6 +251,9 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
                 if db_session.get("diagnosis"):
                     ai_state["diagnosis_complete"] = True
                     ai_state["diagnosis_text"] = db_session["diagnosis"]
+                    # Add report to history if not there
+                    if not any("---REPORT_DATA---" in str(h) for h in ai_state["conversation_history"]):
+                        ai_state["conversation_history"].append(db_session["diagnosis"])
         except Exception:
             pass
 
@@ -263,40 +289,61 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
     user_msg_doc = {"role": "user", "text": message, "timestamp": now}
     if session_id and len(session_id) == 24:
         try:
+            db_user_write_start = perf_counter()
             await db.chat_sessions.update_one(
                 {"_id": ObjectId(session_id)},
                 {"$push": {"messages": user_msg_doc}, "$set": {"updatedAt": now}}
             )
+            timings.append(_timing_entry("db_save_user_message", db_user_write_start))
         except Exception:
             pass
 
     ai_state["conversation_history"].append(f"User: {message}")
+    symptom_start = perf_counter()
     extracted = extract_symptoms_from_text(message)
+    timings.append(_timing_entry("symptom_extraction", symptom_start))
     if extracted:
         ai_state["symptoms"].extend(extracted)
         ai_state["symptoms"] = list(set(ai_state["symptoms"]))
 
     # Follow-up after diagnosis
     if ai_state.get("diagnosis_complete"):
+        # Ensure the diagnosis report is in the conversation history for context
+        if not any("---REPORT_DATA---" in str(h) for h in ai_state["conversation_history"]):
+            diag_text = ai_state.get("diagnosis_text") or diagnosis_context
+            if diag_text:
+                ai_state["conversation_history"].insert(0, diag_text)
+
+        post_report_start = perf_counter()
         next_q = get_next_question(ai_state["symptoms"], ai_state["conversation_history"])
+        timings.append(_timing_entry("post_report_answer", post_report_start))
         ai_state["conversation_history"].append(next_q)
 
         if session_id and len(session_id) == 24:
             try:
                 bubbles = [b.strip() for b in next_q.split("---NEXT_BUBBLE---") if b.strip()]
                 bot_msgs = [{"role": "bot", "text": b, "timestamp": utcnow()} for b in bubbles]
+                db_post_report_write_start = perf_counter()
                 await db.chat_sessions.update_one(
                     {"_id": ObjectId(session_id)},
                     {"$push": {"messages": {"$each": bot_msgs}}, "$set": {"updatedAt": utcnow()}}
                 )
-            except Exception:
-                pass
+                timings.append(_timing_entry("db_save_post_report_answer", db_post_report_write_start))
+            except Exception as e:
+                print(f"Error saving bot response: {e}")
+        timings.append(_timing_entry("request_total", request_start))
+        telemetry = _build_telemetry(timings)
+        print(f"[ASK TRACE] session={session_id} telemetry={json.dumps(telemetry, default=str)}")
         return {"type": "question", "content": next_q,
-                "intelligence": {"symptoms": ai_state["symptoms"], "progress": 100}}
+                "intelligence": {"symptoms": ai_state["symptoms"], "progress": 100}, "telemetry": telemetry}
 
     # Should we diagnose now?
+    readiness_start = perf_counter()
     if should_give_diagnosis(ai_state["symptoms"], ai_state["answers"], ai_state["conversation_history"]):
+        timings.append(_timing_entry("diagnosis_readiness_check", readiness_start))
+        diagnosis_start = perf_counter()
         diagnosis = diagnose(ai_state["symptoms"], ai_state["conversation_history"])
+        timings.append(_timing_entry("diagnosis_generation", diagnosis_start))
         ai_state["diagnosis_complete"] = True
         ai_state["diagnosis_text"] = diagnosis
         ai_state["conversation_history"].append(diagnosis)
@@ -312,6 +359,7 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
         if session_id and len(session_id) == 24:
             try:
                 # 1. Update the chat session
+                db_report_save_start = perf_counter()
                 await db.chat_sessions.update_one(
                     {"_id": ObjectId(session_id)},
                     {
@@ -323,28 +371,33 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
                         }
                     }
                 )
+                timings.append(_timing_entry("db_save_report_to_session", db_report_save_start))
                 
                 # 2. ALSO save to reports collection so it shows up in "My Consultations"
                 # get session info to find user_id
+                db_fetch_session_start = perf_counter()
                 session = await db.chat_sessions.find_one({"_id": ObjectId(session_id)})
+                timings.append(_timing_entry("db_fetch_session_for_report", db_fetch_session_start))
                 if session and "userId" in session:
                     # Clean the JSON for specific fields if we want, or just store the diagnosis string
                     # The reports page expects diagnosis, symptoms, recommendations, date
-                    import json
                     try:
                         rj = json.loads(report_json)
+                        db_insert_report_start = perf_counter()
                         await db.reports.insert_one({
                             "patientId": session["userId"],
                             "sessionId": ObjectId(session_id),
-                            "diagnosis": rj.get("diagnosis", title),
-                            "symptoms": ", ".join(rj.get("findings")) if isinstance(rj.get("findings"), list) else rj.get("findings", ""),
-                            "recommendations": ", ".join(rj.get("root_causes")) if isinstance(rj.get("root_causes"), list) else rj.get("root_causes", ""),
+                            "diagnosis": rj.get("diagnosis", {}).get("name", title) if isinstance(rj.get("diagnosis"), dict) else rj.get("diagnosis", title),
+                            "symptoms": ", ".join(rj.get("symptomsReported", [])) if isinstance(rj.get("symptomsReported"), list) else rj.get("symptomsReported", ""),
+                            "recommendations": ". ".join(rj.get("lifestyleChanges", [])) if isinstance(rj.get("lifestyleChanges"), list) else rj.get("lifestyleChanges", ""),
                             "date": utcnow().strftime("%Y-%m-%d"),
                             "createdAt": utcnow()
                         })
+                        timings.append(_timing_entry("db_insert_report_summary", db_insert_report_start))
                     except Exception as e:
                         print(f"Error parsing JSON for report save: {e}")
                         # Fallback if JSON fails
+                        db_insert_report_fallback_start = perf_counter()
                         await db.reports.insert_one({
                             "patientId": session["userId"],
                             "sessionId": ObjectId(session_id),
@@ -354,25 +407,38 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
                             "date": utcnow().strftime("%Y-%m-%d"),
                             "createdAt": utcnow()
                         })
+                        timings.append(_timing_entry("db_insert_report_summary_fallback", db_insert_report_fallback_start))
             except Exception as e:
                 print(f"FAILED TO SAVE REPORT: {e}")
-        return {"type": "diagnosis", "content": report_json}
+        timings.append(_timing_entry("request_total", request_start))
+        telemetry = _build_telemetry(timings)
+        print(f"[ASK TRACE] session={session_id} telemetry={json.dumps(telemetry, default=str)}")
+        return {"type": "diagnosis", "content": report_json, "telemetry": telemetry}
+    else:
+        timings.append(_timing_entry("diagnosis_readiness_check", readiness_start))
 
     # Normal question
+    next_question_start = perf_counter()
     next_q = get_next_question(ai_state["symptoms"], ai_state["conversation_history"])
+    timings.append(_timing_entry("next_question_generation", next_question_start))
     ai_state["conversation_history"].append(next_q)
 
     if session_id and len(session_id) == 24:
         try:
             bubbles = [b.strip() for b in next_q.split("---NEXT_BUBBLE---") if b.strip()]
             bot_msgs = [{"role": "bot", "text": b, "timestamp": utcnow()} for b in bubbles]
+            db_bot_write_start = perf_counter()
             await db.chat_sessions.update_one(
                 {"_id": ObjectId(session_id)},
                 {"$push": {"messages": {"$each": bot_msgs}}, "$set": {"updatedAt": utcnow()}}
             )
+            timings.append(_timing_entry("db_save_bot_question", db_bot_write_start))
         except Exception:
             pass
 
+    timings.append(_timing_entry("request_total", request_start))
+    telemetry = _build_telemetry(timings)
+    print(f"[ASK TRACE] session={session_id} telemetry={json.dumps(telemetry, default=str)}")
     return {
         "type": "question",
         "content": next_q,
@@ -380,7 +446,8 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
             "symptoms": ai_state["symptoms"],
             "prakriti": ai_state.get("prakriti", "Evaluating..."),
             "progress": len(ai_state["symptoms"]) * 20
-        }
+        },
+        "telemetry": telemetry
     }
 
 
@@ -475,18 +542,28 @@ async def recipes(user_id: str = "default_user", data: dict = Body(...)):
         "Separate with '---RECIPE---'.\nUse simple, clear language."
     )
     try:
+        timings = []
+        request_start = perf_counter()
+        reset_trace()
+        recipe_llm_start = perf_counter()
         recipes_text = send(prompt)
+        timings.append(_timing_entry("recipes_generation", recipe_llm_start))
         
         if user_id and len(user_id) == 24:
             try:
+                db_recipe_save_start = perf_counter()
                 await db.chat_sessions.update_one(
                     {"_id": ObjectId(user_id)},
                     {"$set": {"recipesText": recipes_text, "updatedAt": utcnow()}}
                 )
+                timings.append(_timing_entry("db_save_recipes", db_recipe_save_start))
             except Exception:
                 pass
-                
-        return {"recipes": recipes_text}
+
+        timings.append(_timing_entry("request_total", request_start))
+        telemetry = _build_telemetry(timings)
+        print(f"[RECIPES TRACE] session={user_id} telemetry={json.dumps(telemetry, default=str)}")
+        return {"recipes": recipes_text, "telemetry": telemetry}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate recipes: {str(e)}")
 
@@ -542,10 +619,29 @@ def _extract_title(diagnosis_text: str) -> str:
         report = json.loads(cleaned[start:end + 1])
         name = report.get("diagnosis", {}).get("name", "")
         if name:
-            return name.split("(")[0].replace("*", "").strip()
+            # First remove anything in parentheses: "Vata (Something)" -> "Vata"
+            import re
+            name = re.sub(r'\(.*?\)', '', name)
+            # Remove asterisks and extra spaces
+            name = name.replace("*", "").strip()
+            # If after cleanup it contains "with" or multiple parts, take just the first part 
+            # to keep it extremely clean for the UI (e.g. "Vata Imbalance with Agni" -> "Vata Imbalance")
+            if " with " in name.lower():
+                name = name.split(" with ")[0].strip()
+            elif " and " in name.lower():
+                name = name.split(" and ")[0].strip()
+            
+            return name if name else "New consultation"
     except Exception:
         pass
     return "New consultation"
+
+
+def _build_telemetry(timings):
+    return {
+        "timings": timings,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
 
 
 if __name__ == '__main__':
