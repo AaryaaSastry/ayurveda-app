@@ -41,7 +41,7 @@ const MessageChat = ({ recipient, messages: initialMessages }) => {
             key={msg.id} 
             className={`flex flex-col ${msg.sender === 'patient' ? 'items-end' : 'items-start'} animate-slide-up group/msg`}
           >
-             className={`p-6 lg:p-7 rounded-2xl font-bold text-base lg:text-lg shadow-lg relative transition-all duration-500 max-w-[85%] lg:max-w-[75%] ${
+             <div className={`p-6 lg:p-7 rounded-2xl font-bold text-base lg:text-lg shadow-lg relative transition-all duration-500 max-w-[85%] lg:max-w-[75%] ${
                msg.sender === 'patient' 
                  ? 'bg-emerald-600 text-white rounded-br-none shadow-emerald-600/30 hover:scale-[1.02] transform-gpu' 
                  : 'bg-white text-slate-900 rounded-bl-none shadow-slate-100/50 border border-slate-200 hover:scale-[1.02] transform-gpu'

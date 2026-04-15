@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import './report.css';
 import ReportRenderer from './ReportRenderer';
+import PDFChartContainer from './components/PDFChartContainer';
 import RecipesView from './pages/RecipesView';
 import FindDoctors from './pages/dashboard/FindDoctors';
 import { sanitizeMarkdownText } from './utils/textUtils';
@@ -373,6 +374,7 @@ const Chat = () => {
                       const reportData = extractReportJson(msg.text);
                       return (
                         <div className="w-full relative py-8">
+                          {reportData && <PDFChartContainer report={reportData} />}
                           {reportData ? (
                             <div className="space-y-8">
                               <div className="bg-white border-2 border-slate-100 rounded-[28px] p-10 space-y-4 shadow-sm relative group overflow-hidden transition-all hover:border-black cursor-default">
