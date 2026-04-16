@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('grid');
+  const [view, setView] = useState('list');
   const [selectedAppt, setSelectedAppt] = useState(null);
 
   const formatTime = (date) => {
@@ -63,20 +63,20 @@ const Appointments = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1.5 border border-slate-200">
+            <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200">
               <button 
                 onClick={() => setView('grid')}
-                className={`p-2.5 rounded-lg transition-all duration-300 ${view === 'grid' ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-900'}`}
+                className={`p-2 rounded-md transition-all duration-300 ${view === 'grid' ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-900'}`}
                 title="Grid view"
               >
-                <LayoutGrid size={20} strokeWidth={2.5} />
+                <LayoutGrid size={18} strokeWidth={2.5} />
               </button>
               <button 
                 onClick={() => setView('list')}
-                className={`p-2.5 rounded-lg transition-all duration-300 ${view === 'list' ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-900'}`}
+                className={`p-2 rounded-md transition-all duration-300 ${view === 'list' ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-500 hover:text-slate-900'}`}
                 title="List view"
               >
-                <List size={20} strokeWidth={2.5} />
+                <List size={18} strokeWidth={2.5} />
               </button>
             </div>
             <Link to="/find-doctors" className="flex items-center gap-2 px-12 py-2.5 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 active:scale-95 transition-all text-xs tracking-tight">

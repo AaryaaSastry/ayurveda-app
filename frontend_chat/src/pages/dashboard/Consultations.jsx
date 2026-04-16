@@ -9,7 +9,7 @@ const Consultations = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState('newest'); // 'newest' or 'oldest'
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('list'); // 'grid' or 'list'
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [fullReportData, setFullReportData] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -252,23 +252,23 @@ const Consultations = () => {
                 </div>
               ) : fullReportData ? (
                 <div className="animate-fade-in">
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {(Array.isArray(fullReportData) ? fullReportData : [fullReportData]).map((r, idx) => (
-                      <div key={`${r.reportType || 'report'}-${idx}`} className="bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md transition-all">
+                      <div key={`${r.reportType || 'report'}-${idx}`} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-all">
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0 space-y-2">
-                            <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-emerald-600">{r.reportType || 'Clinical Report'}</span>
-                            <h4 className="text-sm font-semibold text-slate-900 leading-snug line-clamp-1">{r.title || 'Clinical Summary'}</h4>
-                            <div className="text-[11px] text-slate-500 font-normal leading-relaxed line-clamp-2">
+                            <span className="text-[8px] font-medium uppercase tracking-[0.18em] text-emerald-600">{r.reportType || 'Clinical Report'}</span>
+                            <h4 className="text-[13px] font-medium text-slate-900 leading-snug line-clamp-1">{r.title || 'Clinical Summary'}</h4>
+                            <div className="text-[10px] text-slate-500 font-normal leading-relaxed line-clamp-2">
                               {r.reportData?.diagnosis?.reasoning || r.reportData?.doshaRecommendation || 'Holistic guidance and clinical protocol summary.'}
                             </div>
                           </div>
                           <button
                             onClick={() => downloadSingleReport(r)}
-                            className="p-2 rounded-lg bg-slate-900 text-white hover:bg-black transition-all shrink-0"
+                            className="p-1.5 rounded-lg bg-slate-800 text-white hover:bg-slate-900 transition-all shrink-0"
                             title="Download PDF"
                           >
-                            <Download size={14} strokeWidth={2} />
+                            <Download size={12} strokeWidth={2} />
                           </button>
                         </div>
                       </div>

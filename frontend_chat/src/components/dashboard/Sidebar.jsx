@@ -94,7 +94,6 @@ const Sidebar = () => {
   };
 
   const menuItems = [
-    { name: 'Consultation', icon: <Activity size={18} />, path: '/chat' },
     { name: 'My Reports', icon: <FileText size={18} />, path: '/consultations' },
     { name: 'My Appointments', icon: <Calendar size={18} />, path: '/appointments' },
     { name: 'Find Doctors', icon: <Search size={18} />, path: '/find-doctors' },
@@ -150,7 +149,7 @@ const Sidebar = () => {
                 key={item.name}
                 to={item.path}
                 className={`flex items-center justify-between px-5 py-3 rounded-lg transition-all duration-300 group border-2 ${isActive
-                  ? 'bg-white border-black text-black shadow-lg shadow-gray-100'
+                  ? 'bg-[#f1f7f4] border-transparent text-slate-900 shadow-sm'
                   : 'text-gray-400 border-transparent hover:bg-[#f8faf9] hover:text-black hover:border-gray-100'
                   }`}
               >
@@ -160,7 +159,7 @@ const Sidebar = () => {
                   </span>
                   <span className="font-bold text-sm tracking-tight">{item.name}</span>
                 </div>
-                {isActive && <ChevronRight size={14} strokeWidth={3} className="text-black" />}
+                {isActive && <ChevronRight size={14} strokeWidth={3} className="text-emerald-600" />}
               </NavLink>
             );
           })}
@@ -180,12 +179,12 @@ const Sidebar = () => {
                   key={session._id}
                   to={`/chat/${session._id}`}
                   className={`flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-300 group relative border-2 ${isActive
-                    ? 'bg-white border-black text-black shadow-sm'
+                    ? 'bg-[#f1f7f4] border-transparent text-slate-900 shadow-sm'
                     : 'text-gray-400 border-transparent hover:bg-[#f8faf9] hover:border-gray-100 hover:text-black'
                     }`}
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <div className={`p-1.5 rounded-lg border-2 flex-shrink-0 transition-colors ${isActive ? 'bg-black border-black text-white' : 'bg-white border-gray-100 group-hover:bg-gray-50 text-gray-400 group-hover:text-black'}`}>
+                      <div className={`p-1.5 rounded-lg border-2 flex-shrink-0 transition-colors ${isActive ? 'bg-emerald-100/60 border-transparent text-emerald-700' : 'bg-white border-gray-100 group-hover:bg-gray-50 text-gray-400 group-hover:text-black'}`}>
                       <MessageSquare size={13} fill={isActive ? "currentColor" : "none"} strokeWidth={isActive ? 2 : 2.5} />
                     </div>
                     <div className="flex flex-col min-w-0">
@@ -215,10 +214,10 @@ const Sidebar = () => {
       <div className="p-6 border-t-2 border-gray-50 bg-[#fafcfb] space-y-2">
         <button
           onClick={() => navigate('/profile')}
-          className={`flex items-center gap-3 w-full px-5 py-3 rounded-lg transition-all text-sm font-bold tracking-tight border-2 active:scale-95 ${
+          className={`flex items-center gap-3 w-full px-5 py-3 rounded-lg transition-all text-sm font-medium tracking-tight border-2 active:scale-95 ${
             location.pathname === '/profile'
-              ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm'
-              : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900 shadow-sm shadow-slate-200'
+              ? 'bg-[#f1f7f4] border-transparent text-slate-900 shadow-sm'
+              : 'text-slate-600 border-transparent hover:bg-[#f1f7f4] hover:text-slate-900 shadow-sm shadow-slate-200'
           }`}
         >
           <User size={16} strokeWidth={2.5} />
