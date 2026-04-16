@@ -115,6 +115,15 @@ const Consultations = () => {
     fetchReports();
   }, []);
 
+  const handleDeleteReport = async (reportId) => {
+    try {
+      await patientApi.deleteReport(reportId);
+      setReports(prev => prev.filter(r => r._id !== reportId));
+    } catch (err) {
+      console.error('Failed to delete report:', err);
+    }
+  };
+
   const sortedReports = [...reports].sort((a, b) => {
     const dateA = new Date(a.createdAt || a.date).getTime();
     const dateB = new Date(b.createdAt || b.date).getTime();
@@ -182,7 +191,7 @@ const Consultations = () => {
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedReports.map(report => (
-              <ReportCard key={report._id} report={report} onView={() => openReportDrawer(report)} isListView={false} />
+              <ReportCard key={report._id} report={report} onView={() => openReportDrawer(report)} onDelete={handleDeleteReport} isListView={false} />
             ))}
             
             {sortedReports.length === 0 && (
@@ -200,7 +209,7 @@ const Consultations = () => {
         ) : (
           <div className="space-y-3">
             {sortedReports.map(report => (
-              <ReportCard key={report._id} report={report} onView={() => openReportDrawer(report)} isListView={true} />
+              <ReportCard key={report._id} report={report} onView={() => openReportDrawer(report)} onDelete={handleDeleteReport} isListView={true} />
             ))}
             
             {sortedReports.length === 0 && (

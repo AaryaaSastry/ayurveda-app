@@ -1,10 +1,11 @@
 import React from 'react';
-import { FileText, Download, Eye, Calendar, ShieldCheck, Loader2, TrendingUp } from 'lucide-react';
+import { FileText, Download, Eye, Calendar, ShieldCheck, Loader2, Trash2 } from 'lucide-react';
 import { downloadMedicalReportPDF } from '../../utils/pdfExport';
 import { chatApi } from '../../services/api';
 
-const ReportCard = ({ report, onView, isListView = false }) => {
+const ReportCard = ({ report, onView, onDelete, isListView = false }) => {
   const [downloading, setDownloading] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   const extractReportPayload = (text) => {
     if (!text) return null;
@@ -82,6 +83,18 @@ const ReportCard = ({ report, onView, isListView = false }) => {
     }
   };
 
+  const handleDelete = async (e) => {
+    if (e) e.stopPropagation();
+    if (!onDelete || deleting) return;
+    if (!window.confirm('Hide this report from your list?')) return;
+    setDeleting(true);
+    try {
+      await onDelete(report._id);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (isListView) {
     return (
       <div className="bg-white border border-slate-200 rounded-lg p-5 hover:shadow-md hover:border-slate-300 transition-all duration-300 flex items-start justify-between gap-4 group">
@@ -121,6 +134,14 @@ const ReportCard = ({ report, onView, isListView = false }) => {
             title="View Report"
           >
             <Eye size={16} strokeWidth={2.5} />
+          </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="p-2.5 bg-white border border-slate-200 text-slate-400 rounded-lg hover:bg-red-50 hover:text-red-500 active:scale-95 transition-all disabled:opacity-60"
+            title="Remove Report"
+          >
+            {deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} strokeWidth={2.5} />}
           </button>
           <button 
             onClick={handleDownload}

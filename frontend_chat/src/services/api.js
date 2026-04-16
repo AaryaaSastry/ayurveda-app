@@ -38,6 +38,7 @@ export const patientApi = {
   getAppointments: () => api.get('/patient/appointments'),
   updateProfile: (data) => api.patch('/patient/profile', data),
   hideAppointment: (id) => api.delete(`/patient/appointments/${id}`),
+  deleteReport: (id) => api.delete(`/patient/reports/${id}`),
 };
 
 export const publicApi = {

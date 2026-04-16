@@ -73,6 +73,24 @@ const AppointmentCard = ({ appointment, onDelete, isListView = false }) => {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 flex-shrink-0 relative z-10">
+               <button
+                  onClick={async (e) => {
+                     e.stopPropagation();
+                     if (window.confirm('Cancel and hide this appointment?')) {
+                        setLoading(true);
+                        try {
+                           await onDelete(appointment._id);
+                        } finally {
+                           setLoading(false);
+                        }
+                     }
+                  }}
+                  disabled={loading}
+                  className="p-2.5 bg-white border border-slate-200 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all duration-300 disabled:opacity-60"
+                  title="Cancel appointment"
+               >
+                  {loading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} strokeWidth={2.5} />}
+               </button>
                <button 
                   onClick={() => setShowSessionInfo(true)}
                   className="p-2.5 bg-slate-900 text-white rounded-xl hover:bg-emerald-600 transition-all duration-300 group/access shadow-md shadow-slate-900/20"
