@@ -27,7 +27,8 @@ import {
   X,
   CreditCard,
   Stethoscope,
-  Activity
+  Activity,
+  Trash2
 } from 'lucide-react';
 import { docConnectApi } from '../../services/api';
 
@@ -44,6 +45,7 @@ const Messages = () => {
   const [socket, setSocket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [hiddenChats, setHiddenChats] = useState([]);
   const [showNegotiationForm, setShowNegotiationForm] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
@@ -61,10 +63,26 @@ const Messages = () => {
     const userData = localStorage.getItem('user');
     if (userData) {
       const parsed = JSON.parse(userData);
-      setCurrentUserId(parsed.id || parsed._id);
+      const uid = parsed.id || parsed._id;
+      setCurrentUserId(uid);
+      
+      // Load hidden chats from localStorage
+      const storedHidden = localStorage.getItem(`hidden_chats_${uid}`);
+      if (storedHidden) setHiddenChats(JSON.parse(storedHidden));
     }
     return () => s.disconnect();
   }, []);
+
+  const hideChat = (chatId, e) => {
+    e.stopPropagation();
+    const updatedHidden = [...hiddenChats, chatId];
+    setHiddenChats(updatedHidden);
+    localStorage.setItem(`hidden_chats_${currentUserId}`, JSON.stringify(updatedHidden));
+    if (activeChat?._id === chatId) {
+      setActiveChat(null);
+      navigate('/messages');
+    }
+  };
 
   const fetchChats = async () => {
     try {
@@ -232,7 +250,7 @@ const Messages = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar">
-          {chats.map(chat => {
+          {chats.filter(c => !hiddenChats.includes(c._id)).map(chat => {
             const dr = getOtherUser(chat);
             const active = activeChat?._id === chat._id;
             return (
@@ -243,6 +261,15 @@ const Messages = () => {
                   active ? 'bg-emerald-950 shadow-[0_20px_40px_rgba(6,78,59,0.15)]' : 'hover:bg-emerald-50/50'
                 }`}
               >
+                <button 
+                  onClick={(e) => hideChat(chat._id, e)}
+                  className={`absolute top-4 right-4 p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110 ${
+                    active ? 'text-rose-400 hover:text-rose-300 hover:bg-white/10' : 'text-rose-500/40 hover:text-rose-600 hover:bg-rose-50'
+                  }`}
+                  title="Archive Chat"
+                >
+                  <Trash2 size={16} strokeWidth={2.5} />
+                </button>
                 <div className="flex items-center gap-4">
                   <div className={`h-14 w-14 rounded-[22px] flex items-center justify-center text-lg font-black border-2 transition-transform duration-500 group-hover:scale-105 ${
                     active ? 'bg-white/10 border-white/10 text-white' : 'bg-white border-emerald-50 text-emerald-800/30'

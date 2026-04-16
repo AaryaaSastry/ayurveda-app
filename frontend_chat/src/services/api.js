@@ -69,6 +69,8 @@ export const docConnectApi = {
   acceptNegotiation: (id) => api.post('/negotiation/accept', { negotiation_id: id }),
   lockNegotiation: (id) => api.post('/negotiation/lock', { negotiation_id: id }),
   getNegotiation: (chatId) => api.get(`/negotiation/${chatId}`),
+  updateProfile: (data) => api.patch('/patient/profile', data),
+  getMe: () => api.get('/auth/me'),
 };
 
 export default api;

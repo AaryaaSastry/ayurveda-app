@@ -213,7 +213,18 @@ const Sidebar = () => {
       </div>
 
       {/* Profile Section */}
-      <div className="p-6 border-t-2 border-gray-50 bg-[#fafcfb]">
+      <div className="p-6 border-t-2 border-gray-50 bg-[#fafcfb] space-y-2">
+        <button
+          onClick={() => navigate('/profile')}
+          className={`flex items-center gap-3 w-full px-5 py-3 rounded-lg transition-all text-sm font-bold tracking-tight border-2 active:scale-95 ${
+            location.pathname === '/profile'
+              ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm'
+              : 'text-slate-600 border-transparent hover:bg-slate-100 hover:text-slate-900 shadow-sm shadow-slate-200'
+          }`}
+        >
+          <User size={16} strokeWidth={2.5} />
+          <span>Update Profile</span>
+        </button>
 
         <button
           onClick={handleLogout}
