@@ -18,6 +18,21 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Create a separate instance for chat API with token support
+const chatApiInstance = axios.create({
+  baseURL: CHAT_API_BASE_URL,
+});
+
+chatApiInstance.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
+
 export const patientApi = {
   getReports: () => api.get('/patient/reports'),
   getAppointments: () => api.get('/patient/appointments'),
@@ -33,14 +48,14 @@ export const publicApi = {
   bookAppointment: (data) => api.post('/public/appointments/book', data),
 };
 
-// Chat API (FastAPI)
+// Chat API (FastAPI with JWT auth)
 export const chatApi = {
-  getSessions: (userId) => axios.get(`${CHAT_API_BASE_URL}/api/chat/sessions/${userId}`),
-  getSession: (sessionId) => axios.get(`${CHAT_API_BASE_URL}/api/chat/session/${sessionId}`),
-  createSession: (userId) => axios.post(`${CHAT_API_BASE_URL}/api/chat/create`, { userId }),
-  deleteSession: (sessionId) => axios.delete(`${CHAT_API_BASE_URL}/api/chat/session/${sessionId}`),
-  ask: (sessionId, message, diagnosis) => axios.post(`${CHAT_API_BASE_URL}/ask?user_id=${encodeURIComponent(sessionId)}`, { message, diagnosis }),
-  getRecipes: (sessionId, diagnosis) => axios.post(`${CHAT_API_BASE_URL}/recipes?user_id=${encodeURIComponent(sessionId)}`, { diagnosis }),
+  getSessions: (userId) => chatApiInstance.get(`/api/chat/sessions/${userId}`),
+  getSession: (sessionId) => chatApiInstance.get(`/api/chat/session/${sessionId}`),
+  createSession: (userId) => chatApiInstance.post(`/api/chat/create`, { userId }),
+  deleteSession: (sessionId) => chatApiInstance.delete(`/api/chat/session/${sessionId}`),
+  ask: (sessionId, message, diagnosis) => chatApiInstance.post(`/ask?user_id=${encodeURIComponent(sessionId)}`, { message, diagnosis }),
+  getRecipes: (sessionId, diagnosis) => chatApiInstance.post(`/recipes?user_id=${encodeURIComponent(sessionId)}`, { diagnosis }),
 };
 
 export const docConnectApi = {

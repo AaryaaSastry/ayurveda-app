@@ -27,30 +27,78 @@ db = None
 async def create_indexes_in_background():
     """Create indexes in background without blocking startup"""
     try:
-        await asyncio.sleep(1)  # Wait a moment for server to be ready
+        if db is None:
+            print("⚠️ Database not initialized, skipping index creation")
+            return
+        
+        await asyncio.sleep(2)  # Wait for connection to stabilize
         await db.chat_sessions.create_index("userId")
         await db.chat_sessions.create_index("updatedAt")
-        print("✅ MongoDB indexes created")
+        print("✅ MongoDB indexes created successfully")
     except Exception as e:
-        print(f"⚠️ Failed to create indexes: {e}")
+        print(f"⚠️ Failed to create indexes (non-critical): {str(e)}")
 
 @app.on_event("startup")
 async def startup():
     global mongo_client, db
-    mongo_client = AsyncIOMotorClient(MONGODB_URI, serverSelectionTimeoutMS=3000)
-    db = mongo_client["doctor_portal"]
-    print("✅ FastAPI connecting to MongoDB...")
-    # Create indexes in background (don't block startup)
     try:
+        print(f"⏳ Connecting to MongoDB Atlas: {MONGODB_URI[:25]}...")
+        
+        mongo_client = AsyncIOMotorClient(
+            MONGODB_URI,
+            serverSelectionTimeoutMS=10000,
+            connectTimeoutMS=15000
+        )
+        
+        # Test connection
+        await mongo_client.admin.command('ping')
+        print("✅ FastAPI connected to MongoDB Atlas successfully!")
+        
+        db = mongo_client["doctor_portal"]
+        print("✅ Database initialized")
+        
+        # Create indexes in background
         asyncio.create_task(create_indexes_in_background())
+    
     except Exception as e:
-        print(f"⚠️ Could not schedule index creation: {e}")
+        print(f"❌ MongoDB initialization error: {str(e)}")
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    global mongo_client, db
     if mongo_client:
         mongo_client.close()
+
+
+async def ensure_db_connected():
+    """Retry connection if db is None. Called by endpoints when needed."""
+    global mongo_client, db
+    if db is not None:
+        return True
+    
+    try:
+        print("🔄 Retrying MongoDB connection...")
+        connection_string = MONGODB_URI
+        if "?" not in connection_string:
+            connection_string += "?"
+        else:
+            connection_string += "&"
+        connection_string += "tlsAllowInvalidCertificates=true"
+        
+        mongo_client = AsyncIOMotorClient(
+            connection_string,
+            serverSelectionTimeoutMS=5000,
+            connectTimeoutMS=10000
+        )
+        
+        await asyncio.wait_for(mongo_client.admin.command('ping'), timeout=5)
+        db = mongo_client["doctor_portal"]
+        print("✅ MongoDB reconnected successfully!")
+        return True
+    except Exception as e:
+        print(f"❌ Reconnection failed: {str(e)}")
+        return False
 
 
 # ─── CORS ─────────────────────────────────────────────────────────────────────
@@ -116,6 +164,10 @@ def _build_telemetry(timings: list) -> dict:
 @app.post("/api/chat/create")
 async def create_chat_session(data: dict = Body(...)):
     """Create a new empty chat session for a user."""
+    # Try to ensure DB is connected
+    if not await ensure_db_connected():
+        raise HTTPException(status_code=503, detail="Database connection failed. Please try again.")
+    
     user_id_str = data.get("userId")
     if not user_id_str:
         raise HTTPException(status_code=400, detail="userId is required")
@@ -146,26 +198,40 @@ async def create_chat_session(data: dict = Body(...)):
 @app.get("/api/chat/sessions/{user_id}")
 async def get_user_sessions(user_id: str):
     """Return all chat sessions for a user (summary only)."""
+    # Try to ensure DB is connected
+    if not await ensure_db_connected():
+        raise HTTPException(
+            status_code=503, 
+            detail="Database connection failed. MongoDB Atlas may be unavailable. Check your internet connection."
+        )
+    
     try:
         user_oid = ObjectId(user_id)
     except InvalidId:
         raise HTTPException(status_code=400, detail="Invalid userId")
 
-    cursor = db.chat_sessions.find(
-        {"userId": user_oid},
-        {"title": 1, "updatedAt": 1, "createdAt": 1, "diagnosis": 1, "recipesText": 1,
-         "showPostReportOptions": 1, "hasAskedAboutReport": 1}
-    ).sort("updatedAt", -1)
+    try:
+        cursor = db.chat_sessions.find(
+            {"userId": user_oid},
+            {"title": 1, "updatedAt": 1, "createdAt": 1, "diagnosis": 1, "recipesText": 1,
+             "showPostReportOptions": 1, "hasAskedAboutReport": 1}
+        ).sort("updatedAt", -1)
 
-    sessions = []
-    async for doc in cursor:
-        sessions.append(serialize_session(doc))
-    return sessions
+        sessions = []
+        async for doc in cursor:
+            sessions.append(serialize_session(doc))
+        return sessions
+    except Exception as e:
+        print(f"❌ [get_user_sessions] Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching sessions: {str(e)}")
 
 
 @app.get("/api/chat/session/{session_id}")
 async def get_session(session_id: str):
     """Return a full session including all messages."""
+    if not await ensure_db_connected():
+        raise HTTPException(status_code=503, detail="Database connection failed. Please try again.")
+    
     try:
         session_oid = ObjectId(session_id)
     except InvalidId:
@@ -180,6 +246,9 @@ async def get_session(session_id: str):
 @app.delete("/api/chat/session/{session_id}")
 async def delete_session(session_id: str):
     """Delete a chat session."""
+    if not await ensure_db_connected():
+        raise HTTPException(status_code=503, detail="Database connection failed. Please try again.")
+    
     try:
         session_oid = ObjectId(session_id)
     except InvalidId:
@@ -196,6 +265,9 @@ async def delete_session(session_id: str):
 @app.patch("/api/chat/session/{session_id}")
 async def update_session_meta(session_id: str, data: dict = Body(...)):
     """Update showPostReportOptions / hasAskedAboutReport flags."""
+    if not await ensure_db_connected():
+        raise HTTPException(status_code=503, detail="Database connection failed. Please try again.")
+    
     try:
         session_oid = ObjectId(session_id)
     except InvalidId:
@@ -221,6 +293,9 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
     Main chat endpoint. user_id here is the sessionId (from frontend query param).
     Persists messages to MongoDB.
     """
+    if not await ensure_db_connected():
+        raise HTTPException(status_code=503, detail="Database connection failed. Please try again.")
+    
     session_id = user_id  # frontend sends ?user_id=<sessionId>
     message = data.get("message", "")
     diagnosis_context = data.get("diagnosis", "")

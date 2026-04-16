@@ -6,6 +6,7 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
@@ -18,10 +19,8 @@ const Auth = () => {
 
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
     try {
-      const response = await axios.post(`http://localhost:5001${endpoint}`, {
-        email,
-        password,
-      });
+      const payload = isLogin ? { email, password } : { email, password, name };
+      const response = await axios.post(`http://localhost:5001${endpoint}`, payload);
 
       const { token, user } = response.data;
       localStorage.setItem('token', token);
@@ -62,6 +61,19 @@ const Auth = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
+          {!isLogin && (
+            <div className="form-group">
+              <label htmlFor="name">Full Name</label>
+              <input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="John Doe"
+                required={!isLogin}
+              />
+            </div>
+          )}
           <div className="form-group">
             <label htmlFor="email">Email Address</label>
             <input
