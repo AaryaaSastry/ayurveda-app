@@ -429,22 +429,35 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
         report_json = diagnosis.split("---REPORT_DATA---")[-1] if "---REPORT_DATA---" in diagnosis else diagnosis
         # Clean markdown code blocks if present
         report_json = report_json.replace("```json", "").replace("```", "").strip()
+
+        reports_payload = None
+        reports_list = []
+        try:
+            reports_payload = json.loads(report_json)
+            if isinstance(reports_payload, dict) and isinstance(reports_payload.get("reports"), list):
+                reports_list = [r for r in reports_payload.get("reports", []) if isinstance(r, dict)]
+        except Exception:
+            reports_payload = None
         
         diagnosis_msg_doc = {"role": "report", "text": report_json, "timestamp": utcnow()}
         if session_id and len(session_id) == 24:
             try:
                 # 1. Update the chat session
                 db_report_save_start = perf_counter()
+                session_update = {
+                    "$push": {"messages": diagnosis_msg_doc},
+                    "$set": {
+                        "diagnosis": report_json,
+                        "title": title,
+                        "updatedAt": utcnow()
+                    }
+                }
+                if reports_list:
+                    session_update["$set"]["reports"] = reports_list
+
                 await db.chat_sessions.update_one(
                     {"_id": ObjectId(session_id)},
-                    {
-                        "$push": {"messages": diagnosis_msg_doc},
-                        "$set": {
-                            "diagnosis": report_json,
-                            "title": title,
-                            "updatedAt": utcnow()
-                        }
-                    }
+                    session_update
                 )
                 timings.append(_timing_entry("db_save_report_to_session", db_report_save_start))
                 
@@ -457,17 +470,61 @@ async def ask(user_id: str = "default_session", data: dict = Body(...)):
                     # Clean the JSON for specific fields if we want, or just store the diagnosis string
                     # The reports page expects diagnosis, symptoms, recommendations, date
                     try:
-                        rj = json.loads(report_json)
                         db_insert_report_start = perf_counter()
-                        await db.reports.insert_one({
-                            "patientId": session["userId"],
-                            "sessionId": ObjectId(session_id),
-                            "diagnosis": rj.get("diagnosis", {}).get("name", title) if isinstance(rj.get("diagnosis"), dict) else rj.get("diagnosis", title),
-                            "symptoms": ", ".join(rj.get("symptomsReported", [])) if isinstance(rj.get("symptomsReported"), list) else rj.get("symptomsReported", ""),
-                            "recommendations": ". ".join(rj.get("lifestyleChanges", [])) if isinstance(rj.get("lifestyleChanges"), list) else rj.get("lifestyleChanges", ""),
-                            "date": utcnow().strftime("%Y-%m-%d"),
-                            "createdAt": utcnow()
-                        })
+                        if reports_list:
+                            report_docs = []
+                            for r in reports_list:
+                                report_type = r.get("reportType") or "Diagnosis Report"
+                                report_title = r.get("title") or report_type
+                                report_data = r.get("reportData") if isinstance(r.get("reportData"), dict) else {}
+                                diagnosis_name = ""
+                                diagnosis_value = report_data.get("diagnosis")
+                                if isinstance(diagnosis_value, dict):
+                                    diagnosis_name = diagnosis_value.get("name", "")
+                                elif isinstance(diagnosis_value, str):
+                                    diagnosis_name = diagnosis_value
+
+                                symptom_items = report_data.get("symptomSeverity", [])
+                                symptoms_list = []
+                                if isinstance(symptom_items, list):
+                                    for s in symptom_items:
+                                        if isinstance(s, dict) and s.get("symptom"):
+                                            symptoms_list.append(s.get("symptom"))
+                                if not symptoms_list and isinstance(report_data.get("symptomsReported"), list):
+                                    symptoms_list = report_data.get("symptomsReported", [])
+
+                                lifestyle_value = report_data.get("lifestyleChanges")
+                                if isinstance(lifestyle_value, list):
+                                    recommendations = ". ".join(lifestyle_value)
+                                else:
+                                    recommendations = lifestyle_value or ""
+
+                                report_docs.append({
+                                    "patientId": session["userId"],
+                                    "sessionId": ObjectId(session_id),
+                                    "reportType": report_type,
+                                    "reportTitle": report_title,
+                                    "reportData": report_data,
+                                    "diagnosis": diagnosis_name or title,
+                                    "symptoms": ", ".join(symptoms_list) if symptoms_list else "",
+                                    "recommendations": recommendations,
+                                    "date": utcnow().strftime("%Y-%m-%d"),
+                                    "createdAt": utcnow()
+                                })
+
+                            if report_docs:
+                                await db.reports.insert_many(report_docs)
+                        else:
+                            rj = json.loads(report_json)
+                            await db.reports.insert_one({
+                                "patientId": session["userId"],
+                                "sessionId": ObjectId(session_id),
+                                "diagnosis": rj.get("diagnosis", {}).get("name", title) if isinstance(rj.get("diagnosis"), dict) else rj.get("diagnosis", title),
+                                "symptoms": ", ".join(rj.get("symptomsReported", [])) if isinstance(rj.get("symptomsReported"), list) else rj.get("symptomsReported", ""),
+                                "recommendations": ". ".join(rj.get("lifestyleChanges", [])) if isinstance(rj.get("lifestyleChanges"), list) else rj.get("lifestyleChanges", ""),
+                                "date": utcnow().strftime("%Y-%m-%d"),
+                                "createdAt": utcnow()
+                            })
                         timings.append(_timing_entry("db_insert_report_summary", db_insert_report_start))
                     except Exception as e:
                         print(f"Error parsing JSON for report save: {e}")
@@ -692,7 +749,18 @@ def _extract_title(diagnosis_text: str) -> str:
         cleaned = raw.replace("```json", "").replace("```", "").strip()
         start, end = cleaned.index("{"), cleaned.rindex("}")
         report = json.loads(cleaned[start:end + 1])
-        name = report.get("diagnosis", {}).get("name", "")
+        name = ""
+        if isinstance(report.get("reports"), list) and report["reports"]:
+            first_report = report["reports"][0]
+            if isinstance(first_report, dict):
+                report_data = first_report.get("reportData") if isinstance(first_report.get("reportData"), dict) else {}
+                diagnosis_value = report_data.get("diagnosis")
+                if isinstance(diagnosis_value, dict):
+                    name = diagnosis_value.get("name", "")
+                elif isinstance(diagnosis_value, str):
+                    name = diagnosis_value
+        if not name:
+            name = report.get("diagnosis", {}).get("name", "")
         if name:
             # First remove anything in parentheses: "Vata (Something)" -> "Vata"
             import re

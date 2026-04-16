@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { sanitizeMarkdownText } from './textUtils'
 
-export async function downloadMedicalReportPDF(report) {
+export async function downloadMedicalReportPDF(report, options = {}) {
   if (!report) return
 
   try {
@@ -428,9 +428,9 @@ export async function downloadMedicalReportPDF(report) {
       drawFooter();
     }
 
-    const pdfFileName = typeof report.diagnosis === 'string' ? report.diagnosis : (report.diagnosis?.name || 'Report');
-    const safeName = pdfFileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const fileName = `discharge_summary_${safeName}.pdf`;
+    const reportTitle = options.reportTitle || options.reportType || (typeof report.diagnosis === 'string' ? report.diagnosis : (report.diagnosis?.name || 'Report'));
+    const safeName = String(reportTitle).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const fileName = `report_${safeName || 'clinical'}.pdf`;
 
     doc.save(fileName)
 

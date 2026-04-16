@@ -6,29 +6,65 @@ import { chatApi } from '../../services/api';
 const ReportCard = ({ report, onView, isListView = false }) => {
   const [downloading, setDownloading] = React.useState(false);
 
+  const extractReportPayload = (text) => {
+    if (!text) return null;
+    try {
+      if (typeof text === 'object') return text;
+      const raw = text.includes('---REPORT_DATA---') ? text.split('---REPORT_DATA---').pop() : text;
+      const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(clean);
+    } catch (_err) {
+      return null;
+    }
+  };
+
+  const normalizeReports = (payload) => {
+    if (!payload) return [];
+    if (payload.reports && Array.isArray(payload.reports)) {
+      return payload.reports
+        .filter(r => r && typeof r === 'object')
+        .map(r => ({
+          reportType: r.reportType || 'Diagnosis Report',
+          title: r.title || r.reportType || 'Clinical Report',
+          reportData: r.reportData || {}
+        }));
+    }
+    return [{
+      reportType: 'Diagnosis Report',
+      title: 'Clinical Diagnosis',
+      reportData: payload
+    }];
+  };
+
   const handleDownload = async (e) => {
     if (e) e.stopPropagation();
     if (downloading) return;
     setDownloading(true);
     try {
+      if (report.reportData && typeof report.reportData === 'object') {
+        downloadMedicalReportPDF(report.reportData, {
+          reportType: report.reportType,
+          reportTitle: report.reportTitle || report.reportType
+        });
+        return;
+      }
       if (report.sessionId) {
         const res = await chatApi.getSession(report.sessionId);
         const sessionData = res.data;
-        let diagObj = sessionData.diagnosis;
-        if (typeof diagObj === 'string') {
-          const cleaned = diagObj.replace(/```json/g, '').replace(/```/g, '').trim();
-          const start = cleaned.indexOf('{');
-          const end = cleaned.lastIndexOf('}');
-          diagObj = JSON.parse(cleaned.substring(start, end + 1));
+        const payload = extractReportPayload(sessionData.diagnosis);
+        const reports = normalizeReports(payload);
+        const match = reports.find(r => r.reportType === report.reportType) || reports[0];
+        if (match && match.reportData) {
+          const diagObj = match.reportData;
+          downloadMedicalReportPDF({
+            ...diagObj,
+            patientInfo: diagObj.patientInfo || sessionData.patientInfo || { name: 'Patient' },
+            symptomsReported: diagObj.symptomsReported || diagObj.findings || [],
+            dietaryGuide: diagObj.dietaryGuide || {},
+            lifestyleChanges: diagObj.lifestyleChanges || diagObj.lifestyle_changes || [],
+            herbalPreparations: diagObj.herbalPreparations || diagObj.herbal_preparations || [],
+          }, { reportType: match.reportType, reportTitle: match.title });
         }
-        downloadMedicalReportPDF({
-          ...diagObj,
-          patientInfo: diagObj.patientInfo || sessionData.patientInfo || { name: 'Patient' },
-          symptomsReported: diagObj.symptomsReported || diagObj.findings || [],
-          dietaryGuide: diagObj.dietaryGuide || {},
-          lifestyleChanges: diagObj.lifestyleChanges || diagObj.lifestyle_changes || [],
-          herbalPreparations: diagObj.herbalPreparations || diagObj.herbal_preparations || [],
-        });
       } else {
         downloadMedicalReportPDF({
           diagnosis: report.diagnosis,
@@ -62,6 +98,10 @@ const ReportCard = ({ report, onView, isListView = false }) => {
                 Verified
               </span>
             </div>
+
+            {report.reportType && (
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{report.reportType}</span>
+            )}
             
             <p className="text-xs text-slate-500 font-medium line-clamp-1">{(report.symptoms || "").split(',').slice(0, 2).join(', ')}</p>
             
@@ -113,6 +153,9 @@ const ReportCard = ({ report, onView, isListView = false }) => {
             <ShieldCheck size={18} className="text-emerald-600 flex-shrink-0" />
           </div>
           <span className="text-[10px] font-bold uppercase text-emerald-600 tracking-[2px] block">{(report.symptoms || "").split(',')[0]?.trim() || (report.diagnosis?.name ? 'Clinical Symptoms' : 'Clinical Assessment')}</span>
+          {report.reportType && (
+            <span className="text-[9px] font-black uppercase text-slate-400 tracking-[2px] block">{report.reportType}</span>
+          )}
         </div>
         
         <div className="flex items-center gap-8 mb-8 py-4 border-y border-slate-100 w-full justify-center">

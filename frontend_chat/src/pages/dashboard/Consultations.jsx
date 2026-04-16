@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import ReportCard from '../../components/dashboard/ReportCard';
-import { Search, Filter, SlidersHorizontal, Activity, FileText, ChevronRight, Loader2, X, Download, Grid3x3, List } from 'lucide-react';
+import { SlidersHorizontal, Activity, FileText, ChevronRight, Loader2, X, Download, Grid3x3, List } from 'lucide-react';
 import { patientApi, chatApi } from '../../services/api';
 import { Link } from 'react-router-dom';
-import ReportRenderer from '../../ReportRenderer';
 import { downloadMedicalReportPDF } from '../../utils/pdfExport';
 
 const Consultations = () => {
@@ -16,6 +15,36 @@ const Consultations = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isDetailsLoading, setIsDetailsLoading] = useState(false);
 
+  const extractReportPayload = (text) => {
+    if (!text) return null;
+    try {
+      if (typeof text === 'object') return text;
+      const raw = text.includes('---REPORT_DATA---') ? text.split('---REPORT_DATA---').pop() : text;
+      const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(clean);
+    } catch (_err) {
+      return null;
+    }
+  };
+
+  const normalizeReports = (payload) => {
+    if (!payload) return [];
+    if (payload.reports && Array.isArray(payload.reports)) {
+      return payload.reports
+        .filter(r => r && typeof r === 'object')
+        .map(r => ({
+          reportType: r.reportType || 'Diagnosis Report',
+          title: r.title || r.reportType || 'Clinical Report',
+          reportData: r.reportData || {}
+        }));
+    }
+    return [{
+      reportType: 'Diagnosis Report',
+      title: 'Clinical Diagnosis',
+      reportData: payload
+    }];
+  };
+
   const openReportDrawer = async (report) => {
     setSelectedReportId(report._id);
     setIsDrawerOpen(true);
@@ -24,14 +53,29 @@ const Consultations = () => {
       if (report.sessionId) {
         const res = await chatApi.getSession(report.sessionId);
         const sessionData = res.data;
-        let diagObj = sessionData.diagnosis;
-        if (typeof diagObj === 'string') {
-          const cleaned = diagObj.replace(/```json/g, '').replace(/```/g, '').trim();
-          const start = cleaned.indexOf('{');
-          const end = cleaned.lastIndexOf('}');
-          diagObj = JSON.parse(cleaned.substring(start, end + 1));
+        const payload = extractReportPayload(sessionData.diagnosis);
+        const normalized = normalizeReports(payload);
+        if (normalized.length > 0) {
+          setFullReportData(normalized);
+        } else if (report.reportData && typeof report.reportData === 'object') {
+          setFullReportData([
+            {
+              reportType: report.reportType || 'Diagnosis Report',
+              title: report.reportTitle || report.reportType || 'Clinical Report',
+              reportData: report.reportData
+            }
+          ]);
         }
-        setFullReportData(diagObj);
+        return;
+      }
+      if (report.reportData && typeof report.reportData === 'object') {
+        setFullReportData([
+          {
+            reportType: report.reportType || 'Diagnosis Report',
+            title: report.reportTitle || report.reportType || 'Clinical Report',
+            reportData: report.reportData
+          }
+        ]);
       }
     } catch (err) {
       console.error('Failed to load full report:', err);
@@ -46,6 +90,14 @@ const Consultations = () => {
       setFullReportData(null);
       setSelectedReportId(null);
     }, 300);
+  };
+
+  const downloadSingleReport = (reportItem) => {
+    if (!reportItem || !reportItem.reportData) return;
+    downloadMedicalReportPDF(reportItem.reportData, {
+      reportType: reportItem.reportType,
+      reportTitle: reportItem.title
+    });
   };
 
   useEffect(() => {
@@ -166,71 +218,71 @@ const Consultations = () => {
         )}
       </div>
 
-      {/* Report Details Side Drawer */}
+      {/* Report Bundle Modal */}
       {isDrawerOpen && (
-        <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* Backdrop */}
-          <div 
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
             onClick={closeDrawer}
           />
-          
-          {/* Drawer Content */}
-          <div className="relative w-full max-w-[600px] h-full bg-white shadow-[-10px_0_40px_rgba(0,0,0,0.1)] flex flex-col animate-slide-in-right">
-             <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
-                <div className="space-y-1">
-                   <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs tracking-tight">
-                      <FileText size={16} strokeWidth={2.5} />
-                      <span>Clinical Assessment</span>
-                   </div>
-                   <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Full Report</h3>
-                </div>
-                <div className="flex items-center gap-3">
-                   {fullReportData && (
-                      <button
-                        onClick={() => downloadMedicalReportPDF(fullReportData)}
-                        className="p-3 bg-[#f8faf9] border-2 border-gray-100 rounded-2xl text-black hover:bg-black hover:text-white transition-all shadow-sm"
-                        title="Download PDF"
-                      >
-                         <Download size={20} strokeWidth={2.5} />
-                      </button>
-                   )}
-                   <button 
-                     onClick={closeDrawer} 
-                     className="p-3 bg-[#f8faf9] border-2 border-gray-100 rounded-2xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all shadow-sm"
-                   >
-                     <X size={24} />
-                   </button>
-                </div>
-             </div>
 
-             <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/20 p-8 pt-4">
-                {isDetailsLoading ? (
-                   <div className="h-full flex flex-col items-center justify-center space-y-4">
-                      <Loader2 size={48} className="animate-spin text-ayur-forest" />
-                      <p className="text-xs font-bold tracking-tight text-slate-400">Synthesizing clinical data...</p>
-                   </div>
-                ) : fullReportData ? (
-                   <div className="animate-fade-in">
-                      <ReportRenderer report={fullReportData} />
-                      <div className="mt-10 p-8 bg-black text-white rounded-[32px] flex items-center justify-between relative overflow-hidden group">
-                         <div className="absolute top-0 right-0 w-32 h-full bg-ayur-forest opacity-20 skew-x-12 translate-x-12"></div>
-                         <div className="relative z-10 space-y-1">
-                            <h4 className="text-[10px] font-black uppercase tracking-[2px] opacity-60">Ready for consultation?</h4>
-                            <p className="text-sm font-bold opacity-90">Book an appointment with a verified practitioner.</p>
-                         </div>
-                         <Link to="/doctors" className="relative z-10 px-6 py-3 bg-white text-black rounded-xl font-black uppercase text-[10px] tracking-[1px] hover:bg-ayur-sage hover:text-white transition-all shadow-xl">
-                            Find Doctors
-                         </Link>
+          <div className="relative w-[92vw] max-w-[960px] max-h-[85vh] bg-white rounded-[32px] border border-slate-100 shadow-2xl flex flex-col overflow-hidden animate-fade-in">
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-white">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs tracking-tight">
+                  <FileText size={16} strokeWidth={2.5} />
+                  <span>Clinical Assessment</span>
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 tracking-tight">Report Bundle</h3>
+              </div>
+              <button
+                onClick={closeDrawer}
+                className="p-3 bg-[#f8faf9] border-2 border-gray-100 rounded-2xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all shadow-sm"
+                title="Close"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-50/40 p-8">
+              {isDetailsLoading ? (
+                <div className="h-full flex flex-col items-center justify-center space-y-4">
+                  <Loader2 size={48} className="animate-spin text-ayur-forest" />
+                  <p className="text-xs font-bold tracking-tight text-slate-400">Synthesizing clinical data...</p>
+                </div>
+              ) : fullReportData ? (
+                <div className="animate-fade-in">
+                  <div className="space-y-3">
+                    {(Array.isArray(fullReportData) ? fullReportData : [fullReportData]).map((r, idx) => (
+                      <div key={`${r.reportType || 'report'}-${idx}`} className="bg-white border border-slate-200 rounded-2xl px-5 py-4 shadow-sm hover:shadow-md transition-all">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0 space-y-2">
+                            <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-emerald-600">{r.reportType || 'Clinical Report'}</span>
+                            <h4 className="text-sm font-semibold text-slate-900 leading-snug line-clamp-1">{r.title || 'Clinical Summary'}</h4>
+                            <div className="text-[11px] text-slate-500 font-normal leading-relaxed line-clamp-2">
+                              {r.reportData?.diagnosis?.reasoning || r.reportData?.doshaRecommendation || 'Holistic guidance and clinical protocol summary.'}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => downloadSingleReport(r)}
+                            className="p-2 rounded-lg bg-slate-900 text-white hover:bg-black transition-all shrink-0"
+                            title="Download PDF"
+                          >
+                            <Download size={14} strokeWidth={2} />
+                          </button>
+                        </div>
                       </div>
-                   </div>
-                ) : (
-                   <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-20">
-                      <FileText size={80} />
-                      <p className="font-bold text-sm">Failed to load detailed report data.</p>
-                   </div>
-                )}
-             </div>
+                    ))}
+                  </div>
+
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center space-y-4 opacity-20">
+                  <FileText size={80} />
+                  <p className="font-bold text-sm">Failed to load detailed report data.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

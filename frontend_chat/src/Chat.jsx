@@ -70,15 +70,75 @@ const Chat = () => {
   const userId = userData.id || userData._id;
   const activeSession = sessions.find(s => s._id === (activeSessionId || routeSessionId));
 
+  const extractReportPayload = (text) => {
+    if (!text) return null;
+    try {
+      if (typeof text === 'object') return text;
+      const raw = text.includes('---REPORT_DATA---') ? text.split('---REPORT_DATA---').pop() : text;
+      const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      console.error('Failed to parse report JSON:', err);
+      return null;
+    }
+  };
+
+  const normalizeReports = (payload) => {
+    if (!payload) return [];
+    if (Array.isArray(payload)) return payload;
+    if (payload.reports && Array.isArray(payload.reports)) {
+      return payload.reports
+        .filter(r => r && typeof r === 'object')
+        .map(r => ({
+          reportType: r.reportType || 'Diagnosis Report',
+          title: r.title || r.reportType || 'Clinical Report',
+          reportData: r.reportData || {}
+        }));
+    }
+    return [{
+      reportType: 'Diagnosis Report',
+      title: 'Clinical Diagnosis',
+      reportData: payload
+    }];
+  };
+
+  const getSessionReports = (session) => {
+    if (!session) return [];
+    if (Array.isArray(session.reports) && session.reports.length > 0) {
+      return session.reports.map(r => ({
+        reportType: r.reportType || 'Diagnosis Report',
+        title: r.title || r.reportTitle || r.reportType || 'Clinical Report',
+        reportData: r.reportData || r
+      }));
+    }
+    const payload = extractReportPayload(session.diagnosis);
+    return normalizeReports(payload);
+  };
+
+  const downloadReports = (reports) => {
+    if (!reports || reports.length === 0) return;
+    reports.forEach((r) => {
+      if (!r) return;
+      const reportData = r.reportData && typeof r.reportData === 'object' ? r.reportData : r;
+      downloadMedicalReportPDF(reportData, {
+        reportType: r.reportType,
+        reportTitle: r.title
+      });
+    });
+  };
+
   useEffect(() => {
-    if (activeSession?.diagnosis) {
+    const reports = getSessionReports(activeSession);
+    if (reports.length > 0 || activeSession?.diagnosis) {
       setDiagnosisCompleted(true);
-      setDiseaseName(activeSession?.title || "Wellness Plan");
+      const firstReport = reports[0]?.reportData || null;
+      const title = firstReport?.diagnosis?.name || activeSession?.title || "Wellness Plan";
+      setDiseaseName(title);
     } else {
       setDiagnosisCompleted(false);
       setDiseaseName("");
     }
-  }, [activeSession?.diagnosis, activeSession?.title]);
+  }, [activeSession?.diagnosis, activeSession?.title, activeSession?.reports]);
 
   // Sync activeSessionId with route
   useEffect(() => {
@@ -98,7 +158,13 @@ const Chat = () => {
           const merged = res.data.map(summary => {
             const existing = prev.find(p => p._id === summary._id);
             if (existing?.messagesLoaded) {
-              return { ...summary, messages: existing.messages, messagesLoaded: true, diagnosis: existing.diagnosis || summary.diagnosis };
+              return {
+                ...summary,
+                messages: existing.messages,
+                messagesLoaded: true,
+                diagnosis: existing.diagnosis || summary.diagnosis,
+                reports: existing.reports || summary.reports
+              };
             }
             return summary;
           });
@@ -198,9 +264,12 @@ const Chat = () => {
       const data = res.data;
 
       if (data.type === 'diagnosis') {
+        const payload = extractReportPayload(data.content);
+        const reports = normalizeReports(payload);
         setSessions(prev => prev.map(s => s._id === sessId ? {
           ...s,
           diagnosis: data.content,
+          reports,
           messages: s.messages.slice(0, -1).concat({ role: 'report', text: data.content })
         } : s));
         setTimeout(() => {
@@ -231,17 +300,18 @@ const Chat = () => {
   }, []);
 
   useEffect(() => {
-    if (activeSession?.diagnosis) {
-      const info = extractReportJson(activeSession.diagnosis);
-      if (info) {
-        localStorage.setItem('active_report', JSON.stringify({ ...info, hasPlan: !!activeSession.recipesText }));
+    if (activeSession?.diagnosis || (activeSession?.reports && activeSession.reports.length > 0)) {
+      const reports = getSessionReports(activeSession);
+      const firstReport = reports[0]?.reportData || null;
+      if (firstReport) {
+        localStorage.setItem('active_report', JSON.stringify({ ...firstReport, hasPlan: !!activeSession.recipesText }));
         window.dispatchEvent(new CustomEvent('diagnosis-updated'));
       }
     } else {
       localStorage.removeItem('active_report');
       window.dispatchEvent(new CustomEvent('diagnosis-updated'));
     }
-  }, [activeSession?.diagnosis, activeSession?.recipesText]);
+  }, [activeSession?.diagnosis, activeSession?.reports, activeSession?.recipesText]);
 
   const handleRecipes = async () => {
     if (isLoading || !activeSession?.diagnosis) return;
@@ -258,18 +328,6 @@ const Chat = () => {
     finally { setIsLoading(false); }
   };
 
-  const extractReportJson = (text) => {
-    if (!text) return null;
-    try {
-      if (typeof text === 'object') return text;
-      const raw = text.includes('---REPORT_DATA---') ? text.split('---REPORT_DATA---').pop() : text;
-      const clean = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-      return JSON.parse(clean);
-    } catch (err) {
-      console.error('Failed to parse report JSON:', err);
-      return null;
-    }
-  };
 
   return (
     <div className="flex h-full w-full bg-[#fdfdfd] relative overflow-hidden font-sans">
@@ -289,15 +347,12 @@ const Chat = () => {
            <div className="flex-shrink-0 flex justify-end gap-2 md:gap-3 z-20 relative">
              {diagnosisCompleted && (
                 <button
-                  onClick={() => {
-                    const reportData = extractReportJson(activeSession?.diagnosis);
-                    if (reportData) downloadMedicalReportPDF(reportData);
-                  }}
+                  onClick={() => downloadReports(getSessionReports(activeSession))}
                   className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all pointer-events-auto whitespace-nowrap"
                   title="Download Report"
                 >
                   <Download size={14} strokeWidth={2.5} />
-                  <span>Report</span>
+                  <span>Reports</span>
                 </button>
              )}
              {diagnosisCompleted && (
@@ -371,51 +426,61 @@ const Chat = () => {
                 <div key={idx} className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
                   {msg.role === 'report' ? (
                     (() => {
-                      const reportData = extractReportJson(msg.text);
+                      const payload = extractReportPayload(msg.text);
+                      const reports = normalizeReports(payload);
+                      const primaryReport = reports[0]?.reportData || null;
                       return (
-                        <div className="w-full relative py-8">
-                          {reportData && <PDFChartContainer report={reportData} />}
-                          {reportData ? (
-                            <div className="space-y-8">
-                              <div className="bg-white border-2 border-slate-100 rounded-[28px] p-10 space-y-4 shadow-sm relative group overflow-hidden transition-all hover:border-black cursor-default">
-                                <div className="absolute top-0 right-0 w-24 h-1 bg-emerald-500"></div>
-                                <div className="flex items-center gap-3 text-emerald-600 mb-2">
-                                   <ShieldCheck size={18} strokeWidth={2.5} />
-                                   <span className="text-xs font-bold tracking-tight">Biological Synthesis Verified</span>
+                        <div className="w-full relative py-8 space-y-10">
+                          {primaryReport && <PDFChartContainer report={primaryReport} />}
+                          {reports.length > 0 ? (
+                            reports.map((reportItem, reportIndex) => {
+                              const reportData = reportItem.reportData || {};
+                              return (
+                                <div key={`${reportItem.reportType}-${reportIndex}`} className="space-y-8">
+                                  <div className="bg-white border-2 border-slate-100 rounded-[28px] p-10 space-y-4 shadow-sm relative group overflow-hidden transition-all hover:border-black cursor-default">
+                                    <div className="absolute top-0 right-0 w-24 h-1 bg-emerald-500"></div>
+                                    <div className="flex items-center justify-between gap-3 text-emerald-600 mb-2">
+                                      <div className="flex items-center gap-3">
+                                        <ShieldCheck size={18} strokeWidth={2.5} />
+                                        <span className="text-xs font-bold tracking-tight">Biological Synthesis Verified</span>
+                                      </div>
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{reportItem.reportType || 'Clinical Report'}</span>
+                                    </div>
+                                    <h3 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">{reportItem.title || reportData.diagnosis?.name || 'Ayurvedic Assessment'}</h3>
+                                    <p className="text-slate-600 font-medium text-lg leading-relaxed opacity-70 line-clamp-2">
+                                      "{reportData.diagnosis?.reasoning || 'Systemic restoration of bodily equilibrium through focused Ayurvedic protocols.'}"
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap justify-center gap-4">
+                                    <button
+                                      onClick={() => downloadMedicalReportPDF(reportData, { reportType: reportItem.reportType, reportTitle: reportItem.title })}
+                                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
+                                    >
+                                      <Download size={16} strokeWidth={3} />
+                                      <span>Download</span>
+                                    </button>
+                                    <button
+                                      onClick={handleRecipes}
+                                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
+                                    >
+                                      <Sparkles size={16} fill="currentColor" className="text-emerald-600" />
+                                      <span>Wellness Plan</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setActiveSidePanel('doctors')}
+                                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
+                                    >
+                                      <Stethoscope size={16} fill="currentColor" className="text-blue-600" />
+                                      <span>Doctors</span>
+                                    </button>
+                                  </div>
                                 </div>
-                                <h3 className="text-3xl font-bold text-slate-900 tracking-tight leading-none">{reportData.diagnosis?.name || 'Ayurvedic Assessment'}</h3>
-                                <p className="text-slate-600 font-medium text-lg leading-relaxed opacity-70 line-clamp-2">
-                                   "{reportData.diagnosis?.reasoning || 'Systemic restoration of bodily equilibrium through focused Ayurvedic protocols.'}"
-                                </p>
-                              </div>
-                              <div className="flex flex-wrap justify-center gap-4">
-                                <button
-                                  onClick={() => downloadMedicalReportPDF(reportData)}
-                                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
-                                >
-                                  <Download size={16} strokeWidth={3} />
-                                  <span>Download</span>
-                                </button>
-                                <button
-                                  onClick={handleRecipes}
-                                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
-                                >
-                                  <Sparkles size={16} fill="currentColor" className="text-emerald-600" />
-                                  <span>Wellness Plan</span>
-                                </button>
-                                <button
-                                  onClick={() => setActiveSidePanel('doctors')}
-                                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-900 rounded-lg text-xs font-bold tracking-tight shadow-sm hover:bg-slate-50 active:scale-95 transition-all"
-                                >
-                                  <Stethoscope size={16} fill="currentColor" className="text-blue-600" />
-                                  <span>Doctors</span>
-                                </button>
-                              </div>
-                            </div>
+                              );
+                            })
                           ) : (
                             <div className="bg-red-50 border border-red-100 rounded-[32px] p-10 text-center space-y-3">
                               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 mx-auto">
-                                 <Activity size={24} />
+                                <Activity size={24} />
                               </div>
                               <h4 className="text-red-900 font-bold uppercase text-xs tracking-widest">Analysis Failure</h4>
                               <p className="text-red-600/60 text-sm font-medium">Internal engine could not synthesize the diagnostic data.</p>
