@@ -6,7 +6,6 @@ import PatientDashboard from './pages/dashboard/PatientDashboard'
 
 import Consultations from './pages/dashboard/Consultations'
 import Appointments from './pages/dashboard/Appointments'
-import Messages from './pages/dashboard/Messages'
 import FindDoctors from './pages/dashboard/FindDoctors'
 import Profile from './pages/dashboard/Profile'
 
@@ -63,8 +62,6 @@ export default function App() {
             <Route index element={<Navigate to="/chat" replace />} />
             <Route path="consultations" element={<Consultations />} />
             <Route path="appointments" element={<Appointments />} />
-            <Route path="messages" element={<Messages />} />
-            <Route path="messages/:chatId" element={<Messages />} />
             <Route path="find-doctors" element={<FindDoctors />} />
             <Route path="profile" element={<Profile />} />
             <Route path="chat" element={<Chat />} />

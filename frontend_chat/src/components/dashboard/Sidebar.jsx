@@ -97,7 +97,6 @@ const Sidebar = () => {
     { name: 'Consultation', icon: <Activity size={18} />, path: '/chat' },
     { name: 'My Reports', icon: <FileText size={18} />, path: '/consultations' },
     { name: 'My Appointments', icon: <Calendar size={18} />, path: '/appointments' },
-    { name: 'Messages', icon: <MessageSquare size={18} />, path: '/messages' },
     { name: 'Find Doctors', icon: <Search size={18} />, path: '/find-doctors' },
   ];
 

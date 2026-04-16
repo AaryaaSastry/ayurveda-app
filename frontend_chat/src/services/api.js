@@ -37,8 +37,6 @@ export const patientApi = {
   getReports: () => api.get('/patient/reports'),
   getAppointments: () => api.get('/patient/appointments'),
   updateProfile: (data) => api.patch('/patient/profile', data),
-  getMessages: (patientId) => api.get(`/messages/patient/${patientId}`),
-  sendMessage: (data) => api.post('/messages/send', data),
   hideAppointment: (id) => api.delete(`/patient/appointments/${id}`),
 };
 
@@ -56,21 +54,6 @@ export const chatApi = {
   deleteSession: (sessionId) => chatApiInstance.delete(`/api/chat/session/${sessionId}`),
   ask: (sessionId, message, diagnosis) => chatApiInstance.post(`/ask?user_id=${encodeURIComponent(sessionId)}`, { message, diagnosis }),
   getRecipes: (sessionId, diagnosis) => chatApiInstance.post(`/recipes?user_id=${encodeURIComponent(sessionId)}`, { diagnosis }),
-};
-
-export const docConnectApi = {
-  createChat: (user2_id) => api.post('/chat/create', { user2_id }),
-  getChats: () => api.get('/chat/my-chats'),
-  getMessages: (chatId) => api.get(`/chat/${chatId}/messages`),
-  sendMessage: (chat_id, message_text) => api.post('/chat/send', { chat_id, message_text }),
-  
-  startNegotiation: (chatId, data) => api.post('/negotiation/start', { chat_id: chatId, ...data }),
-  counterNegotiation: (id, data) => api.post('/negotiation/counter', { negotiation_id: id, ...data }),
-  acceptNegotiation: (id) => api.post('/negotiation/accept', { negotiation_id: id }),
-  lockNegotiation: (id) => api.post('/negotiation/lock', { negotiation_id: id }),
-  getNegotiation: (chatId) => api.get(`/negotiation/${chatId}`),
-  updateProfile: (data) => api.patch('/patient/profile', data),
-  getMe: () => api.get('/auth/me'),
 };
 
 export default api;

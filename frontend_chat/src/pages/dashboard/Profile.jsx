@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Phone, Mail, MapPin, Calendar, Edit2, CheckCircle2, Shield, Heart, Activity, ChevronRight, Lock, Loader2, Plus } from 'lucide-react';
-import { docConnectApi } from '../../services/api';
+import api, { patientApi } from '../../services/api';
 
 const Profile = () => {
   const [user, setUser] = useState(null);
@@ -21,7 +21,7 @@ const Profile = () => {
         const token = localStorage.getItem('token');
         if (token) {
           // Fetch fresh data from backend
-          const res = await docConnectApi.getMe();
+          const res = await api.get('/auth/me');
           const userData = res.data;
           setProfile({
             name: userData.name || '',
@@ -51,7 +51,7 @@ const Profile = () => {
         address: profile.address || '',
         avatar: profile.avatar || ''
       };
-      const res = await docConnectApi.updateProfile(sanitizedProfile);
+      const res = await patientApi.updateProfile(sanitizedProfile);
       localStorage.setItem('user', JSON.stringify(res.data));
       setProfile({
         name: res.data.name || '',

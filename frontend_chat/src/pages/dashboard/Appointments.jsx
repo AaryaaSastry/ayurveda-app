@@ -1,24 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import AppointmentCard from '../../components/dashboard/AppointmentCard';
 import { Calendar as CalendarIcon, LayoutGrid, List, Activity, Video, MapPin, X, ExternalLink, Navigation, ArrowRight, ChevronRight, Trash2, PlusCircle, Loader2 } from 'lucide-react';
-import { patientApi, docConnectApi } from '../../services/api';
-import { Link, useNavigate } from 'react-router-dom';
+import { patientApi } from '../../services/api';
+import { Link } from 'react-router-dom';
 
 const Appointments = () => {
-  const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('grid');
   const [selectedAppt, setSelectedAppt] = useState(null);
-
-  const handleOpenChat = async (doctorId) => {
-    try {
-      const res = await docConnectApi.createChat(doctorId);
-      navigate(`/messages/${res.data._id}`);
-    } catch (err) {
-      console.error('Failed to open chat:', err);
-    }
-  };
 
   const formatTime = (date) => {
     if (!date) return null;
@@ -122,7 +112,6 @@ const Appointments = () => {
                  key={appt._id} 
                  appointment={appt} 
                  onDelete={handleDeleteAppointment}
-                 onChat={() => handleOpenChat(appt.doctorId?._id || appt.doctorId)}
                  isListView={false}
                />
              ))}
@@ -134,7 +123,6 @@ const Appointments = () => {
                  key={appt._id} 
                  appointment={appt} 
                  onDelete={handleDeleteAppointment}
-                 onChat={() => handleOpenChat(appt.doctorId?._id || appt.doctorId)}
                  isListView={true}
                />
              ))}
