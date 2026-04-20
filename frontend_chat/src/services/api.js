@@ -53,6 +53,9 @@ export const doctorChatApi = {
   getMessages: (chatId) => api.get(`/chat/${chatId}/messages`),
   sendMessage: ({ chatId, message, doctorId, userId }) => api.post('/chat/messages', { chatId, message, doctorId, userId }),
   markRead: (chatId) => api.patch(`/chat/${chatId}/read`),
+  createNegotiation: ({ chatId, date, time, amount, mode }) => api.post('/chat/negotiations', { chatId, date, time, amount, mode }),
+  acceptNegotiation: (negotiationId) => api.post(`/chat/negotiations/${negotiationId}/accept`),
+  counterNegotiation: ({ negotiationId, date, time, amount, mode }) => api.post(`/chat/negotiations/${negotiationId}/counter`, { date, time, amount, mode }),
 };
 
 // Chat API (FastAPI with JWT auth)
