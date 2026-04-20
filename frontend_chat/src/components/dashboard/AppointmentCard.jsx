@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Calendar, Clock, MapPin, User, ArrowRight, Video, Stethoscope, ChevronRight, Activity, X, ExternalLink, Navigation, Loader2, Trash2, Eye } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, ArrowRight, Video, Stethoscope, ChevronRight, Activity, X, ExternalLink, Navigation, Loader2, Trash2, Eye, MessageSquare } from 'lucide-react';
 
-const AppointmentCard = ({ appointment, onDelete, isListView = false }) => {
+const AppointmentCard = ({ appointment, onDelete, onMessage, isListView = false }) => {
    const [loading, setLoading] = useState(false);
    const [showSessionInfo, setShowSessionInfo] = useState(false);
    const isConfirmed = (appointment.status || "").toLowerCase() === 'confirmed';
@@ -73,6 +73,13 @@ const AppointmentCard = ({ appointment, onDelete, isListView = false }) => {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 flex-shrink-0 relative z-10">
+               <button
+                  onClick={() => onMessage?.(appointment)}
+                  className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-50 hover:text-emerald-600 transition-all duration-300"
+                  title="Message doctor"
+               >
+                  <MessageSquare size={16} strokeWidth={2.5} />
+               </button>
                <button
                   onClick={async (e) => {
                      e.stopPropagation();
@@ -200,6 +207,14 @@ const AppointmentCard = ({ appointment, onDelete, isListView = false }) => {
                         </div>
                      )}
 
+                     <button
+                        onClick={() => onMessage?.(appointment)}
+                        className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg shadow-slate-900/20 active:scale-95"
+                     >
+                        <MessageSquare size={18} strokeWidth={2.5} />
+                        <span>Open Doctor Chat</span>
+                     </button>
+
                      {/* Footer Note */}
                      <p className="text-xs font-medium text-slate-500 text-center">Click the X button or outside to close</p>
                   </div>
@@ -269,13 +284,22 @@ const AppointmentCard = ({ appointment, onDelete, isListView = false }) => {
             </div>
             
             <div className="w-full">
-               <button
-                  onClick={() => setShowSessionInfo(true)}
-                  className="w-full bg-slate-100 text-slate-900 py-4 rounded-3xl text-sm font-bold uppercase tracking-widest hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2 group/btn"
-               >
-                  <Eye size={18} strokeWidth={2.5} />
-                  <span>Access</span>
-               </button>
+               <div className="grid grid-cols-2 gap-3">
+                  <button
+                     onClick={() => onMessage?.(appointment)}
+                     className="w-full bg-white border border-slate-200 text-slate-900 py-4 rounded-3xl text-sm font-bold uppercase tracking-widest hover:bg-slate-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                     <MessageSquare size={16} strokeWidth={2.5} />
+                     <span>Chat</span>
+                  </button>
+                  <button
+                     onClick={() => setShowSessionInfo(true)}
+                     className="w-full bg-slate-100 text-slate-900 py-4 rounded-3xl text-sm font-bold uppercase tracking-widest hover:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-2 group/btn"
+                  >
+                     <Eye size={18} strokeWidth={2.5} />
+                     <span>Access</span>
+                  </button>
+               </div>
             </div>
          </div>
 
@@ -343,6 +367,14 @@ const AppointmentCard = ({ appointment, onDelete, isListView = false }) => {
                         </a>
                      </div>
                   )}
+
+                  <button
+                     onClick={() => onMessage?.(appointment)}
+                     className="w-full py-3 bg-slate-900 text-white rounded-lg font-bold tracking-tight text-sm flex items-center justify-center gap-2 hover:bg-black active:scale-95 transition-all shadow-lg shadow-slate-900/20"
+                  >
+                     <MessageSquare size={16} strokeWidth={2.5} />
+                     <span>Open Doctor Chat</span>
+                  </button>
                </div>
             </div>
          )}

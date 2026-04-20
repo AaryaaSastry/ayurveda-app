@@ -8,6 +8,7 @@ import Consultations from './pages/dashboard/Consultations'
 import Appointments from './pages/dashboard/Appointments'
 import FindDoctors from './pages/dashboard/FindDoctors'
 import Profile from './pages/dashboard/Profile'
+import Messages from './pages/dashboard/Messages'
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('token')
@@ -64,6 +65,8 @@ export default function App() {
             <Route path="appointments" element={<Appointments />} />
             <Route path="find-doctors" element={<FindDoctors />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="messages" element={<Messages />} />
+            <Route path="messages/:chatId" element={<Messages />} />
             <Route path="chat" element={<Chat />} />
             <Route path="chat/:sessionId" element={<Chat />} />
           </Route>

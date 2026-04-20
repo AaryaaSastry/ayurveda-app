@@ -95,6 +95,10 @@ const DashboardHome = () => {
               <span className="relative z-10 text-[13px] uppercase tracking-[2px]">Start New Inquiry</span>
               <Activity size={20} className="relative z-10 text-emerald-500" strokeWidth={3} />
             </Link>
+            <Link to="/messages" className="flex items-center gap-4 px-8 py-5 bg-white border border-slate-200 text-slate-900 rounded-[24px] font-black shadow-sm hover:border-slate-300 active:scale-95 transition-all">
+              <span className="text-[13px] uppercase tracking-[2px]">Doctor Chat</span>
+              <MessageSquare size={18} className="text-emerald-600" strokeWidth={2.5} />
+            </Link>
           </div>
         </div>
 

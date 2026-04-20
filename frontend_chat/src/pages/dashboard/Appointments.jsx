@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import AppointmentCard from '../../components/dashboard/AppointmentCard';
 import { Calendar as CalendarIcon, LayoutGrid, List, Activity, Video, MapPin, X, ExternalLink, Navigation, ArrowRight, ChevronRight, Trash2, PlusCircle, Loader2 } from 'lucide-react';
-import { patientApi } from '../../services/api';
-import { Link } from 'react-router-dom';
+import { patientApi, doctorChatApi } from '../../services/api';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Appointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list');
   const [selectedAppt, setSelectedAppt] = useState(null);
+  const navigate = useNavigate();
 
   const formatTime = (date) => {
     if (!date) return null;
@@ -46,6 +47,19 @@ const Appointments = () => {
       });
     } catch (err) {
       console.error('❌ Failed to hide appointment:', err);
+    }
+  };
+
+  const handleMessageDoctor = async (appointment) => {
+    const doctorId = appointment?.doctorId?._id;
+    if (!doctorId) return;
+    try {
+      const res = await doctorChatApi.initiateChat({ doctorId });
+      const chatId = res?.data?._id;
+      if (!chatId) throw new Error('Missing chat id');
+      navigate(`/messages/${chatId}`);
+    } catch (err) {
+      console.error('Failed to open doctor chat:', err);
     }
   };
 
@@ -112,6 +126,7 @@ const Appointments = () => {
                  key={appt._id} 
                  appointment={appt} 
                  onDelete={handleDeleteAppointment}
+                 onMessage={handleMessageDoctor}
                  isListView={false}
                />
              ))}
@@ -123,6 +138,7 @@ const Appointments = () => {
                  key={appt._id} 
                  appointment={appt} 
                  onDelete={handleDeleteAppointment}
+                 onMessage={handleMessageDoctor}
                  isListView={true}
                />
              ))}

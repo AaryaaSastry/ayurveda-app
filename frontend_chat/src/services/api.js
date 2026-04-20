@@ -47,6 +47,14 @@ export const publicApi = {
   bookAppointment: (data) => api.post('/public/appointments/book', data),
 };
 
+export const doctorChatApi = {
+  listChats: () => api.get('/chat/list'),
+  initiateChat: ({ doctorId, userId }) => api.post('/chat/initiate', { doctorId, userId }),
+  getMessages: (chatId) => api.get(`/chat/${chatId}/messages`),
+  sendMessage: ({ chatId, message, doctorId, userId }) => api.post('/chat/messages', { chatId, message, doctorId, userId }),
+  markRead: (chatId) => api.patch(`/chat/${chatId}/read`),
+};
+
 // Chat API (FastAPI with JWT auth)
 export const chatApi = {
   getSessions: (userId) => chatApiInstance.get(`/api/chat/sessions/${userId}`),

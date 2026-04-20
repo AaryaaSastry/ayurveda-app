@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, MapPin, Star, ShieldCheck, Clock, ArrowRight, Filter, Activity, User, Loader2 } from 'lucide-react';
-import { publicApi, patientApi, chatApi } from '../../services/api';
+import { Search, MapPin, Star, ShieldCheck, Clock, ArrowRight, Filter, Activity, User, Loader2, MessageSquare } from 'lucide-react';
+import { publicApi, patientApi, chatApi, doctorChatApi } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const FindDoctors = ({ embedded, diagnosis }) => {
   const [doctors, setDoctors] = useState([]);
@@ -8,6 +9,7 @@ const FindDoctors = ({ embedded, diagnosis }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [location, setLocation] = useState({ lat: 19.0760, lng: 72.8777 }); // Default: Mumbai
   const [isSearching, setIsSearching] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (embedded) {
@@ -169,6 +171,17 @@ const FindDoctors = ({ embedded, diagnosis }) => {
     }
   };
 
+  const handleMessage = async (doctorId) => {
+    try {
+      const res = await doctorChatApi.initiateChat({ doctorId });
+      const chatId = res?.data?._id;
+      if (!chatId) throw new Error('Missing chat id');
+      navigate(`/messages/${chatId}`);
+    } catch (err) {
+      console.error('Failed to open doctor chat:', err);
+    }
+  };
+
   return (
     <div className={`h-full overflow-y-auto custom-scrollbar ${embedded ? 'px-2 py-4' : 'px-4 sm:px-6 md:px-8 lg:px-12 py-8'}`}>
       <div className={`${embedded ? 'w-full space-y-4' : 'max-w-[1240px] space-y-8'} mx-auto pb-20`}>
@@ -245,6 +258,13 @@ const FindDoctors = ({ embedded, diagnosis }) => {
                   </div>
 
                   <div className="w-full grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleMessage(doctor._id)}
+                      className={`w-full bg-white border border-[#dfe7e3] text-[#2d4038] ${embedded ? 'py-3 rounded-[14px] text-[10px]' : 'py-4 rounded-3xl text-sm'} font-bold uppercase tracking-widest hover:bg-[#f7faf8] active:scale-95 transition-all flex items-center justify-center gap-2`}
+                    >
+                      <MessageSquare size={14} />
+                      <span>Chat</span>
+                    </button>
                     <button
                       onClick={() => handleBook(doctor._id)}
                       className={`w-full bg-[#2d4038] text-white ${embedded ? 'py-3 rounded-[14px] text-[10px]' : 'py-4 rounded-3xl text-sm'} font-bold uppercase tracking-widest shadow-xl shadow-[#2d4038]/20 hover:bg-[#1a231f] active:scale-95 transition-all flex items-center justify-center gap-2 group/btn`}
