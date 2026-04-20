@@ -53,6 +53,7 @@ export const doctorChatApi = {
   getMessages: (chatId) => api.get(`/chat/${chatId}/messages`),
   sendMessage: ({ chatId, message, doctorId, userId }) => api.post('/chat/messages', { chatId, message, doctorId, userId }),
   markRead: (chatId) => api.patch(`/chat/${chatId}/read`),
+  deleteChat: (chatId) => api.delete(`/chat/${chatId}`),
   createNegotiation: ({ chatId, date, time, amount, mode }) => api.post('/chat/negotiations', { chatId, date, time, amount, mode }),
   acceptNegotiation: (negotiationId) => api.post(`/chat/negotiations/${negotiationId}/accept`),
   counterNegotiation: ({ negotiationId, date, time, amount, mode }) => api.post(`/chat/negotiations/${negotiationId}/counter`, { date, time, amount, mode }),

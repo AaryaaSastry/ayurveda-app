@@ -14,6 +14,7 @@ import {
   Send,
   UserRound,
   Video,
+  Trash2,
 } from 'lucide-react';
 import { doctorChatApi } from '../../services/api';
 import { createDoctorChatSocket } from '../../features/chat/socketService';
@@ -254,6 +255,22 @@ const Messages = () => {
     const socket = createDoctorChatSocket(token);
     socketRef.current = socket;
 
+    socket.on('chat:updated', async () => {
+      try {
+        const nextChats = await doctorChatApi.listChats();
+        setChats(nextChats);
+      } catch (error) {
+        console.error('Failed to sync charts dynamically', error);
+      }
+    });
+
+    socket.on('chat:deleted', ({ chatId }) => {
+       setChats((prev) => prev.filter((chat) => chat._id !== chatId));
+       if (activeChatId === chatId) {
+         navigate('/messages', { replace: true });
+       }
+    });
+
     socket.on('message:new', (message) => {
       setMessagesByChat((prev) => ({
         ...prev,
@@ -476,14 +493,17 @@ const Messages = () => {
             ) : chats.length === 0 ? (
               <div className="p-6 text-sm text-slate-500">No doctor chats yet. Book or open a doctor profile to start one.</div>
             ) : chats.map((chat) => (
-              <button
+              <div
                 key={chat._id}
-                onClick={() => navigate(`/messages/${chat._id}`)}
-                className={`w-full text-left rounded-2xl border p-4 transition-all ${
+                className={`group flex items-center w-full text-left rounded-2xl border transition-all ${
                   chat._id === activeChatId
                     ? 'bg-slate-900 text-white border-slate-900'
                     : 'bg-white text-slate-900 border-slate-200 hover:border-slate-300'
                 }`}
+              >
+              <button
+                onClick={() => navigate(`/messages/${chat._id}`)}
+                className="flex-1 w-full text-left p-4 min-w-0"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -499,6 +519,24 @@ const Messages = () => {
                   )}
                 </div>
               </button>
+              <button
+                 onClick={async (e) => {
+                    e.stopPropagation();
+                    if (window.confirm('Are you sure you want to delete this chat completely?')) {
+                       try {
+                          await doctorChatApi.deleteChat(chat._id);
+                          setChats(prev => prev.filter(c => c._id !== chat._id));
+                          if (activeChatId === chat._id) navigate('/messages', { replace: true });
+                       } catch (err) {
+                          window.alert('Failed to delete chat');
+                       }
+                    }
+                 }}
+                 className={`p-4 transition-colors opacity-0 group-hover:opacity-100 ${chat._id === activeChatId ? 'text-slate-300 hover:text-red-400' : 'text-slate-400 hover:text-red-500'}`}
+              >
+                 <Trash2 size={16} />
+              </button>
+              </div>
             ))}
           </div>
         </aside>
