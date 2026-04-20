@@ -15,8 +15,41 @@ import {
   UserRound,
   Video,
   Trash2,
+  Lock,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
 } from 'lucide-react';
-import { doctorChatApi } from '../../services/api';
+import { doctorChatApi, publicApi } from '../../services/api';
+
+const normalizeStatus = (status) => {
+  if (!status) return 'pending';
+  const s = status.toLowerCase();
+  if (s === 'confirmed' || s === 'scheduled') return 'confirmed';
+  if (s === 'cancelled' || s === 'canceled') return 'cancelled';
+  return s;
+};
+
+const parseTimingsString = (str) => {
+  if (!str || !str.includes(' to ')) return { minTime: '10:00', maxTime: '18:00' };
+  try {
+    const [startPart, endPart] = str.split(' to ');
+    const parse = (timeStr) => {
+      const match = timeStr.match(/(\d+):(\d+)\s*(am|pm)/i);
+      if (!match) return '10:00';
+      let [_, h, m, p] = match;
+      h = parseInt(h);
+      if (p.toLowerCase() === 'pm' && h < 12) h += 12;
+      if (p.toLowerCase() === 'am' && h === 12) h = 0;
+      return `${h.toString().padStart(2, '0')}:${m}`;
+    };
+    return { minTime: parse(startPart), maxTime: parse(endPart) };
+  } catch (e) {
+    return { minTime: '10:00', maxTime: '18:00' };
+  }
+};
+
 import { createDoctorChatSocket } from '../../features/chat/socketService';
 
 const MODE_OPTIONS = ['VIDEO', 'AUDIO', 'CHAT'];
@@ -28,10 +61,11 @@ const MODE_META = {
 };
 
 const createOfferDraft = () => ({
-  date: '',
+  date: new Date().toISOString().split('T')[0],
   time: '',
   amount: '',
   mode: 'VIDEO',
+  duration: 30,
 });
 
 const upsertMessageList = (messages, nextMessage) => {
@@ -177,6 +211,8 @@ const Messages = () => {
   const [offerSending, setOfferSending] = useState(false);
   const [acceptingNegotiationId, setAcceptingNegotiationId] = useState('');
   const [counteringNegotiationId, setCounteringNegotiationId] = useState('');
+  const [doctorData, setDoctorData] = useState(null);
+  const [appointments, setAppointments] = useState([]);
 
   const activeChatId = routeChatId || chats[0]?._id || null;
   const activeChat = useMemo(
@@ -226,29 +262,45 @@ const Messages = () => {
     run();
   }, [searchParams]);
 
+  const loadMessages = async () => {
+    if (!activeChatId) return;
+    setLoadingMessages(true);
+    try {
+      const res = await doctorChatApi.getMessages(activeChatId);
+      setMessagesByChat((prev) => ({ ...prev, [activeChatId]: res.data || [] }));
+      await doctorChatApi.markRead(activeChatId);
+      setChats((prev) => prev.map((chat) => (
+        chat._id === activeChatId ? { ...chat, unreadCount: 0 } : chat
+      )));
+    } catch (error) {
+      console.error('Failed to load chat messages:', error);
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  const fetchDoctorAvailability = async (doctorId) => {
+    if (!doctorId) return;
+    try {
+        const res = await publicApi.getDoctorAvailability(doctorId);
+        if (res.data) {
+            setDoctorData(res.data.doctor);
+            setAppointments(res.data.appointments);
+        }
+    } catch (err) {
+        console.error("Failed to fetch doctor availability:", err);
+    }
+  };
+
   useEffect(() => {
     if (!activeChatId) return;
-
-    const loadMessages = async () => {
-      setLoadingMessages(true);
-      try {
-        const res = await doctorChatApi.getMessages(activeChatId);
-        setMessagesByChat((prev) => ({ ...prev, [activeChatId]: res.data || [] }));
-        await doctorChatApi.markRead(activeChatId);
-        setChats((prev) => prev.map((chat) => (
-          chat._id === activeChatId ? { ...chat, unreadCount: 0 } : chat
-        )));
-      } catch (error) {
-        console.error('Failed to load chat messages:', error);
-      } finally {
-        setLoadingMessages(false);
-      }
-    };
-
     loadMessages();
+    if (activeChat?.doctorId) {
+      fetchDoctorAvailability(activeChat.doctorId);
+    }
     setIsOfferOpen(false);
     setOfferDraft(createOfferDraft());
-  }, [activeChatId]);
+  }, [activeChatId, activeChat?.doctorId]);
 
   useEffect(() => {
     if (!token) return;
@@ -257,10 +309,10 @@ const Messages = () => {
 
     socket.on('chat:updated', async () => {
       try {
-        const nextChats = await doctorChatApi.listChats();
-        setChats(nextChats);
+        const res = await doctorChatApi.listChats();
+        setChats(res.data || []);
       } catch (error) {
-        console.error('Failed to sync charts dynamically', error);
+        console.error('Failed to sync chats dynamically', error);
       }
     });
 
@@ -439,6 +491,68 @@ const Messages = () => {
     }
   };
 
+  const availableDays = useMemo(() => {
+    const days = [];
+    for (let i = 0; i < 14; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() + i);
+        days.push(d);
+    }
+    return days;
+  }, []);
+
+  const timeSlots = useMemo(() => {
+    if (!doctorData?.availability?.timings || !offerDraft.date) return [];
+    
+    const { minTime, maxTime } = parseTimingsString(doctorData.availability.timings);
+    const [startH, startM] = minTime.split(':').map(Number);
+    const [endH, endM] = maxTime.split(':').map(Number);
+    
+    const slots = [];
+    const baseDate = offerDraft.date; 
+    let curr = new Date(`${baseDate}T00:00:00`);
+    curr.setHours(startH, startM, 0, 0);
+    const end = new Date(`${baseDate}T00:00:00`);
+    end.setHours(endH, endM, 0, 0);
+    
+    const requestedDuration = Number(offerDraft.duration) || 30;
+    const now = new Date();
+    let foundRecommended = false;
+
+    while (curr < end) {
+      const timeStr = curr.toTimeString().slice(0, 5);
+      const sStart = new Date(curr.getTime());
+      const sEnd = new Date(sStart.getTime() + requestedDuration * 60 * 1000);
+
+      const isBooked = appointments.some(apt => {
+        const status = normalizeStatus(apt.status);
+        if (status !== 'confirmed' && status !== 'scheduled') return false;
+        const aStart = new Date(apt.startTime);
+        let aEnd = apt.endTime ? new Date(apt.endTime) : new Date(aStart.getTime() + (apt.duration || 30) * 60 * 1000);
+        return (sStart < aEnd && sEnd > aStart);
+      });
+      
+      let isRecommended = false;
+      const isPast = sStart < new Date(now.getTime() + 15 * 60 * 1000);
+      const isToday = baseDate === new Date().toISOString().split('T')[0];
+      if (!isBooked && !foundRecommended) {
+        if (!isToday || !isPast) {
+          isRecommended = true;
+          foundRecommended = true;
+        }
+      }
+
+      slots.push({
+        time: timeStr,
+        label: curr.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isBooked,
+        isRecommended: isRecommended && !isBooked
+      });
+      curr = new Date(curr.getTime() + 15 * 60 * 1000); 
+    }
+    return slots;
+  }, [doctorData, offerDraft.date, offerDraft.duration, appointments]);
+
   const handleCounter = (negotiation) => {
     setCounteringNegotiationId(negotiation._id);
     const d = new Date(negotiation.date);
@@ -598,70 +712,131 @@ const Messages = () => {
 
               <div className="relative flex-shrink-0 p-6 border-t border-slate-200 bg-white">
                 {isOfferOpen && (
-                  <div ref={offerPanelRef} className="absolute bottom-[calc(100%+12px)] left-6 w-[360px] rounded-[28px] border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-200/70">
-                    <div className="flex items-center gap-3">
-                      <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                        <Handshake size={18} />
+                  <div ref={offerPanelRef} className="absolute bottom-[calc(100%+12px)] left-6 w-[440px] rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-2xl shadow-slate-300/40 flex flex-col gap-6 max-h-[600px] overflow-y-auto z-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                          <Handshake size={18} />
+                        </div>
+                        <div>
+                          <div className="text-sm font-black text-slate-900">Ayurvedic Consultation Offer</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-[#aaaaaa] mt-0.5">Define your terms</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-black text-slate-900">Create Consultation Offer</div>
-                        <div className="text-xs text-slate-500">Set the date, mode, and fee before sending.</div>
-                      </div>
+                      <button onClick={() => setIsOfferOpen(false)} className="text-slate-300 hover:text-slate-500 transition-colors"><Trash2 size={16} /></button>
                     </div>
 
-                    <div className="mt-5 space-y-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        <label className="text-sm">
-                          <span className="mb-2 block font-semibold text-slate-600">Date</span>
-                          <input
-                            type="date"
-                            value={offerDraft.date}
-                            onChange={(e) => setOfferDraft((prev) => ({ ...prev, date: e.target.value }))}
-                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-400"
-                          />
-                        </label>
-                        <label className="text-sm">
-                          <span className="mb-2 block font-semibold text-slate-600">Time</span>
-                          <input
-                            type="time"
-                            value={offerDraft.time}
-                            onChange={(e) => setOfferDraft((prev) => ({ ...prev, time: e.target.value }))}
-                            className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-400"
-                          />
-                        </label>
+                    {/* Initial Timing Display (if countering) */}
+                    {counteringNegotiationId && (
+                       <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                         <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Doctor's Preferred Slot</div>
+                         <div className="flex items-center gap-3 text-xs font-bold text-slate-600">
+                           <Clock3 size={14} className="text-emerald-600" />
+                           <span>{offerDraft.date} at {offerDraft.time}</span>
+                         </div>
+                       </div>
+                    )}
+
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Proposed Fee</label>
+                          <div className="relative">
+                            <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#aaaaaa]" />
+                            <input
+                              type="number"
+                              value={offerDraft.amount}
+                              onChange={(e) => setOfferDraft((prev) => ({ ...prev, amount: e.target.value }))}
+                              className="w-full pl-10 pr-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-2xl text-sm font-bold focus:border-emerald-400 outline-none transition-all"
+                              placeholder="Fee"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Duration (m)</label>
+                          <select
+                            value={offerDraft.duration}
+                            onChange={(e) => setOfferDraft((prev) => ({ ...prev, duration: Number(e.target.value) }))}
+                            className="w-full px-4 py-3 bg-[#f8fafc] border border-slate-200 rounded-2xl text-sm font-bold focus:border-emerald-400 outline-none transition-all appearance-none"
+                          >
+                            {[15, 30, 45, 60].map(d => <option key={d} value={d}>{d} mins</option>)}
+                          </select>
+                        </div>
                       </div>
 
-                      <label className="text-sm block">
-                        <span className="mb-2 block font-semibold text-slate-600">Amount</span>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="500"
-                          value={offerDraft.amount}
-                          onChange={(e) => setOfferDraft((prev) => ({ ...prev, amount: e.target.value }))}
-                          className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-400"
-                        />
-                      </label>
+                      {/* Date Carousel */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Select Date</label>
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none snap-x">
+                          {availableDays.map((date, i) => {
+                            const dateStr = date.toISOString().split('T')[0];
+                            const isSelected = offerDraft.date === dateStr;
+                            return (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => setOfferDraft({ ...offerDraft, date: dateStr })}
+                                className={`flex-shrink-0 w-16 h-16 rounded-2xl border transition-all flex flex-col items-center justify-center gap-0.5 snap-start ${
+                                  isSelected ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-white border-slate-100 text-slate-500 hover:border-emerald-200'
+                                }`}
+                              >
+                                <span className="text-[8px] font-black uppercase tracking-widest">{date.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                                <span className="text-sm font-black">{date.getDate()}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                      <div>
-                        <div className="mb-2 block text-sm font-semibold text-slate-600">Mode</div>
+                      {/* Time Grid */}
+                      <div className="space-y-2">
+                         <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Choose Specialist Available Slot</label>
+                            {doctorData?.availability?.timings && (
+                              <span className="text-[8px] font-black text-amber-600 uppercase bg-amber-50 px-2 py-0.5 rounded-md">{doctorData.availability.timings}</span>
+                            )}
+                         </div>
+                         <div className="grid grid-cols-4 gap-2">
+                            {timeSlots.map((slot, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                disabled={slot.isBooked}
+                                onClick={() => setOfferDraft({ ...offerDraft, time: slot.time })}
+                                className={`relative py-3 rounded-xl text-[10px] font-black transition-all flex flex-col items-center gap-1 ${
+                                  slot.isBooked ? 'bg-[#f8fafc] text-slate-200 border-slate-100 cursor-not-allowed' :
+                                  offerDraft.time === slot.time ? 'bg-emerald-600 text-white shadow-lg border-emerald-600' :
+                                  'bg-white border-slate-200 text-slate-600 hover:border-emerald-400'
+                                } ${slot.isRecommended && !slot.isBooked && offerDraft.time !== slot.time ? 'ring-2 ring-emerald-400 ring-offset-1' : ''}`}
+                              >
+                                {slot.isRecommended && !slot.isBooked && offerDraft.time !== slot.time && (
+                                   <div className="absolute -top-1.5 -right-1 bg-emerald-500 text-white text-[6px] px-1 py-0.5 rounded-full ring-2 ring-white">BEST</div>
+                                )}
+                                <span>{slot.label}</span>
+                                {slot.isBooked && <Lock size={10} />}
+                              </button>
+                            ))}
+                         </div>
+                      </div>
+
+                      {/* Mode Selection */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Consultation Mode</label>
                         <div className="grid grid-cols-3 gap-2">
                           {MODE_OPTIONS.map((mode) => {
-                            const modeOption = MODE_META[mode];
-                            const ModeIcon = modeOption.icon;
+                            const meta = MODE_META[mode];
+                            const Icon = meta.icon;
                             const isActive = offerDraft.mode === mode;
                             return (
                               <button
                                 key={mode}
-                                onClick={() => setOfferDraft((prev) => ({ ...prev, mode }))}
-                                className={`rounded-2xl border px-3 py-3 text-xs font-bold transition ${
-                                  isActive
-                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                onClick={() => setOfferDraft({ ...offerDraft, mode })}
+                                className={`py-3 rounded-2xl border text-[9px] font-black uppercase tracking-widest transition-all space-y-1.5 ${
+                                  isActive ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-100 text-[#aaaaaa] hover:border-emerald-200'
                                 }`}
                               >
-                                <ModeIcon size={15} className="mx-auto mb-2" />
-                                {modeOption.label}
+                                <Icon size={14} className="mx-auto" />
+                                <span>{meta.label}</span>
                               </button>
                             );
                           })}
@@ -669,13 +844,22 @@ const Messages = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={handleCreateNegotiation}
-                      disabled={offerSending}
-                      className="mt-5 w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-slate-800 disabled:bg-slate-300"
-                    >
-                      {offerSending ? 'Sending Offer...' : 'Send Offer'}
-                    </button>
+                    <div className="pt-2">
+                      <button
+                        onClick={handleCreateNegotiation}
+                        disabled={offerSending || !offerDraft.time}
+                        className="w-full py-4 rounded-[1.5rem] bg-emerald-700 text-white text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-700/20 hover:bg-emerald-800 transition-all active:scale-95 disabled:bg-slate-100 disabled:text-slate-300 flex items-center justify-center gap-3"
+                      >
+                        {offerSending ? (
+                          <Loader2 className="animate-spin" size={16} />
+                        ) : (
+                          <>FIX SELECTION & SEND OFFER <Check size={14} strokeWidth={3} /></>
+                        )}
+                      </button>
+                      <p className="text-[8px] font-bold text-[#aaaaaa] text-center mt-3 uppercase tracking-widest leading-relaxed">
+                         By clicking "FIX SELECTION", your offer will be locked and sent to the practitioner for evaluation.
+                      </p>
+                    </div>
                   </div>
                 )}
 
